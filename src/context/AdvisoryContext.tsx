@@ -152,7 +152,7 @@ interface AdvisoryContextType {
   soilDepths: SoilMoistureDepth[];
   forecast7Day: DayForecast[];
   
-  // Backward compatibility state for overview & wizard sub-components
+  // Supporting attributes
   selectedGrowthStage: GrowthStage;
   setSelectedGrowthStage: (stage: GrowthStage) => void;
   selectedSoilType: SoilType;
@@ -186,11 +186,11 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [demoStep, setDemoStep] = useState<DemoStep>(1);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   
-  // Step 1 inputs
+  // Step 1 inputs - Default Language set to 'en' (English)
   const [farmerName, setFarmerName] = useState('Ramesh Patil');
   const [farmerPhone, setFarmerPhone] = useState('+91 98234 11209');
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>(PRESET_LOCATIONS[0]);
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>('mr');
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
   
   // Step 2 inputs
   const [selectedCrop, setSelectedCrop] = useState('Tomato');
