@@ -324,3 +324,4 @@ async def test_api_delivery_dispatch_and_history(client: AsyncClient, db_session
         )
         assert res_pref.status_code == 200
         assert res_pref.json()["preferred_channel"] == "VOICE_IVR"
+

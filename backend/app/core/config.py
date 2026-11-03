@@ -87,5 +87,8 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_PHONE_NUMBER: str = ""
 
+    # Stage 7 Admin & Operator Governance Key
+    ADMIN_SECRET_KEY: str = "indradhanu_admin_super_secret_key_2026"
+
 
 settings = Settings()

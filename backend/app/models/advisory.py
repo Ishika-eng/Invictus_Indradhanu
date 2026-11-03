@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.crop import Crop, CropGrowthStage
     from app.models.risk import RiskAssessment
     from app.models.delivery import DeliveryLog
+    from app.models.audit import AdvisoryAuditLog
 
 
 class Advisory(Base, TimestampMixin):
@@ -64,6 +65,13 @@ class Advisory(Base, TimestampMixin):
     disclaimer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     needs_expert_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Stage 7 Admin & Audit Governance
+    action_status: Mapped[str] = mapped_column(
+        String(20), default="PENDING", nullable=False, index=True
+    )  # PENDING, APPLIED, PARTIALLY_APPLIED, IGNORED, EXPIRED
+    farmer_feedback: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    operator_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Relationships
     farmer: Mapped["Farmer"] = relationship("Farmer", back_populates="advisories", lazy="selectin")
     farm: Mapped["Farm"] = relationship("Farm", back_populates="advisories", lazy="selectin")
@@ -75,8 +83,10 @@ class Advisory(Base, TimestampMixin):
     delivery_logs: Mapped[List["DeliveryLog"]] = relationship(
         "DeliveryLog", back_populates="advisory", cascade="all, delete-orphan", lazy="selectin"
     )
+    audit_logs: Mapped[List["AdvisoryAuditLog"]] = relationship(
+        "AdvisoryAuditLog", back_populates="advisory", cascade="all, delete-orphan", lazy="selectin"
+    )
 
     def __repr__(self) -> str:
-        return f"<Advisory(id={self.id}, farmer_id={self.farmer_id}, crop_id={self.crop_id}, status='{self.status}')>"
         return f"<Advisory(id={self.id}, farmer_id={self.farmer_id}, crop_id={self.crop_id}, status='{self.status}')>"
 

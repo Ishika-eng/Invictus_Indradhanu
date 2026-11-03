@@ -206,6 +206,35 @@ class AdvisoryGenerationService:
         await db.commit()
         await db.refresh(advisory)
 
+        # Stage 7: Automatically record immutable audit trail event
+        try:
+            from app.services.audit_service import AuditService
+            await AuditService.record_event(
+                db=db,
+                advisory_id=advisory.id,
+                farm_id=advisory.farm_id,
+                farmer_id=advisory.farmer_id,
+                event_type="ADVISORY_GENERATED",
+                climate_snapshot=current_weather,
+                risk_snapshot={
+                    "overall_score": risk_result.get("overall_risk_score", 0.0),
+                    "overall_level": risk_result.get("overall_risk_level", "LOW"),
+                    "category_scores": risk_result.get("category_scores", {}),
+                },
+                advisory_snapshot={
+                    "immediate_action": advisory.immediate_action,
+                    "why_it_matters": advisory.why_it_matters,
+                    "confidence_pct": advisory.confidence_pct,
+                    "language": advisory.language,
+                },
+                scoring_methodology=risk_result.get("scoring_methodology", "AGRONOMIC_MULTI_CRITERIA_V1"),
+                model_version=advisory.model_version or "rules_engine_v1+gemini-1.5-flash",
+                operator_id="ai_advisory_engine",
+                notes="Generated automatically via Indradhanu rules & AI advisory engine",
+            )
+        except Exception as audit_err:
+            logger.warning(f"Audit log recording skipped: {audit_err}")
+
         return advisory
 
     @classmethod

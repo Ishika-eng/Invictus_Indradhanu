@@ -317,3 +317,4 @@ class DeliveryDispatcher:
                 return {"status": "updated", "delivery_log_id": str(log.id), "new_status": log.status}
 
         return {"status": "acknowledged", "parsed": parsed}
+

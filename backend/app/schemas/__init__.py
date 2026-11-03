@@ -60,6 +60,20 @@ from app.schemas.advisory import (
     AdvisoryDetailResponse,
     AdvisoryGenerateRequest,
 )
+from app.schemas.admin import (
+    OverviewMetricsResponse,
+    AdminFarmerItem,
+    AdminFarmersListResponse,
+    AdminFarmerDetailResponse,
+    AdminAdvisoryItem,
+    AdminAdvisoriesListResponse,
+    AdvisoryReassessResponse,
+    AdvisoryResendRequest,
+    AdvisoryFeedbackRequest,
+    AuditLogResponse,
+    AuditLogsListResponse,
+    ImpactMeasurementResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -114,5 +128,17 @@ __all__ = [
     "AdvisoryResponse",
     "AdvisoryDetailResponse",
     "AdvisoryGenerateRequest",
+    "OverviewMetricsResponse",
+    "AdminFarmerItem",
+    "AdminFarmersListResponse",
+    "AdminFarmerDetailResponse",
+    "AdminAdvisoryItem",
+    "AdminAdvisoriesListResponse",
+    "AdvisoryReassessResponse",
+    "AdvisoryResendRequest",
+    "AdvisoryFeedbackRequest",
+    "AuditLogResponse",
+    "AuditLogsListResponse",
+    "ImpactMeasurementResponse",
 ]
 

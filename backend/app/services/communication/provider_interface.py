@@ -37,3 +37,4 @@ class BaseDeliveryProvider(ABC):
     ) -> Dict[str, Any]:
         """Parses carrier delivery receipts or incoming user events."""
         pass
+

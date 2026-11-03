@@ -809,5 +809,417 @@ export async function updateFarmerPreferences(
   return res.json();
 }
 
+// ==============================================================================
+// Stage 7: Admin Dashboard & Advisory Audit System Types & API Client
+// ==============================================================================
+
+export interface AdminOverviewMetrics {
+  total_farmers: number;
+  active_farms: number;
+  active_crop_cycles: number;
+  active_risks_count: number;
+  risks_by_level: Record<string, number>;
+  advisories_generated_count: number;
+  delivery_statistics: {
+    total_dispatches: number;
+    delivered_count: number;
+    simulated_count: number;
+    failed_count: number;
+    by_channel: Record<string, { total: number; delivered: number; simulated: number; failed: number }>;
+    success_rate_pct: number;
+  };
+  geographic_distribution: Array<{
+    state: string;
+    district: string;
+    farmer_count: number;
+    farm_count: number;
+    total_acreage: number;
+  }>;
+  recent_activity: Array<{
+    id: string;
+    type: string;
+    farmer_name: string;
+    crop: string;
+    action: string;
+    status: string;
+    confidence_pct: number;
+    timestamp?: string;
+  }>;
+}
+
+export interface AdminFarmerItem {
+  id: string;
+  full_name: string;
+  phone_number: string;
+  village: string;
+  district: string;
+  state: string;
+  country: string;
+  preferred_language: string;
+  preferred_channel: string;
+  is_opted_in: boolean;
+  role: string;
+  trust_score: number;
+  farms_count: number;
+  total_acreage: number;
+  crops: string[];
+  advisories_count: number;
+  last_advisory_date?: string;
+  created_at?: string;
+}
+
+export interface AdminFarmersListResponse {
+  items: AdminFarmerItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface AdminFarmerDetailResponse {
+  farmer: AdminFarmerItem;
+  farms: Array<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    acreage: number;
+    soil_type: string;
+    irrigation_source: string;
+    crops: Array<{
+      id: string;
+      crop_name: string;
+      variety?: string;
+      cultivated_acreage: number;
+      sowing_date?: string;
+      current_stage?: string;
+      is_active: boolean;
+    }>;
+  }>;
+  advisories: Array<{
+    id: string;
+    crop_name: string;
+    immediate_action: string;
+    why_it_matters: string;
+    status: string;
+    action_status: string;
+    language: string;
+    confidence_pct: number;
+    farmer_feedback?: any;
+    created_at?: string;
+  }>;
+  delivery_logs: Array<{
+    id: string;
+    channel: string;
+    status: string;
+    recipient_phone: string;
+    carrier_message_id?: string;
+    is_simulation: boolean;
+    provider: string;
+    created_at?: string;
+  }>;
+}
+
+export interface AdminAdvisoryItem {
+  id: string;
+  farmer_id: string;
+  farmer_name: string;
+  farmer_phone: string;
+  farm_id: string;
+  farm_name: string;
+  crop_name: string;
+  growth_stage_name?: string;
+  immediate_action: string;
+  why_it_matters: string;
+  recommended_timing: string;
+  risk_if_ignored: string;
+  language: string;
+  status: string;
+  confidence_pct: number;
+  action_status: string;
+  risk_level?: string;
+  risk_score?: number;
+  climate_summary?: Record<string, any>;
+  delivery_summary: {
+    total_dispatches: number;
+    channels: string[];
+    has_delivered: boolean;
+    is_simulation: boolean;
+    latest_status: string;
+  };
+  farmer_feedback?: any;
+  operator_notes?: string;
+  created_at?: string;
+}
+
+export interface AdminAdvisoriesListResponse {
+  items: AdminAdvisoryItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface AdvisoryReassessResponse {
+  old_advisory_id: string;
+  new_advisory_id: string;
+  action_taken: string;
+  risk_level: string;
+  risk_score: number;
+  immediate_action: string;
+  audit_log_id: string;
+  reassessed_at: string;
+}
+
+export interface AdvisoryResendRequest {
+  channels?: string[];
+  force_resend?: boolean;
+  simulate?: boolean;
+}
+
+export interface AdvisoryFeedbackRequest {
+  action_taken: 'APPLIED' | 'PARTIALLY_APPLIED' | 'IGNORED' | 'POSTPONED' | string;
+  rating?: number;
+  reported_water_savings_liters?: number;
+  reported_losses_avoided_inr?: number;
+  feedback_text?: string;
+  operator_notes?: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  advisory_id: string;
+  farm_id: string;
+  farmer_id: string;
+  farmer_name?: string;
+  event_type: string;
+  climate_snapshot?: Record<string, any>;
+  risk_snapshot?: Record<string, any>;
+  advisory_snapshot?: Record<string, any>;
+  delivery_snapshot?: Record<string, any>;
+  farmer_action?: string;
+  farmer_feedback?: Record<string, any>;
+  impact_data?: Record<string, any>;
+  scoring_methodology: string;
+  model_version: string;
+  operator_id?: string;
+  notes?: string;
+  created_at?: string;
+  is_immutable: boolean;
+}
+
+export interface AuditLogsListResponse {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ImpactMeasurementResponse {
+  measured: {
+    farmers_reached_verified: number;
+    timely_advisories_delivered: number;
+    carrier_delivery_success_rate_pct: number;
+    zero_cost_simulated_alerts: number;
+    verification_method: string;
+  };
+  farmer_reported: {
+    feedback_sample_size: number;
+    recommendation_uptake_rate_pct: number;
+    total_reported_water_saved_liters: number;
+    total_reported_crop_losses_avoided_inr: number;
+    average_farmer_rating: number;
+    status_note: string;
+  };
+  model_estimated: {
+    potential_water_savings_liters: number;
+    projected_crop_value_protected_inr: number;
+    forecast_precipitation_accuracy_pct: number;
+    modeling_basis: string;
+  };
+  measurement_transparency_note: string;
+}
+
+function adminHeaders(token?: string): HeadersInit {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Admin-Role': 'ADMIN',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+export async function fetchAdminOverview(token?: string): Promise<AdminOverviewMetrics> {
+  const res = await fetch(`${API_BASE_URL}/admin/overview`, {
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch admin overview metrics');
+  }
+  return res.json();
+}
+
+export async function fetchAdminFarmers(
+  params: {
+    q?: string;
+    district?: string;
+    state?: string;
+    crop?: string;
+    language?: string;
+    page?: number;
+    page_size?: number;
+  } = {},
+  token?: string
+): Promise<AdminFarmersListResponse> {
+  const query = new URLSearchParams();
+  if (params.q) query.append('q', params.q);
+  if (params.district) query.append('district', params.district);
+  if (params.state) query.append('state', params.state);
+  if (params.crop) query.append('crop', params.crop);
+  if (params.language) query.append('language', params.language);
+  if (params.page) query.append('page', params.page.toString());
+  if (params.page_size) query.append('page_size', params.page_size.toString());
+
+  const res = await fetch(`${API_BASE_URL}/admin/farmers?${query.toString()}`, {
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch admin farmer directory');
+  }
+  return res.json();
+}
+
+export async function fetchAdminFarmerDetail(
+  farmerId: string,
+  token?: string
+): Promise<AdminFarmerDetailResponse> {
+  const res = await fetch(`${API_BASE_URL}/admin/farmers/${farmerId}`, {
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch farmer ${farmerId} details`);
+  }
+  return res.json();
+}
+
+export async function fetchAdminAdvisories(
+  params: {
+    status?: string;
+    risk_level?: string;
+    farm_id?: string;
+    crop_id?: string;
+    page?: number;
+    page_size?: number;
+  } = {},
+  token?: string
+): Promise<AdminAdvisoriesListResponse> {
+  const query = new URLSearchParams();
+  if (params.status) query.append('status', params.status);
+  if (params.risk_level) query.append('risk_level', params.risk_level);
+  if (params.farm_id) query.append('farm_id', params.farm_id);
+  if (params.crop_id) query.append('crop_id', params.crop_id);
+  if (params.page) query.append('page', params.page.toString());
+  if (params.page_size) query.append('page_size', params.page_size.toString());
+
+  const res = await fetch(`${API_BASE_URL}/admin/advisories?${query.toString()}`, {
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch admin advisories');
+  }
+  return res.json();
+}
+
+export async function reassessAdvisory(
+  advisoryId: string,
+  token?: string
+): Promise<AdvisoryReassessResponse> {
+  const res = await fetch(`${API_BASE_URL}/admin/advisories/${advisoryId}/reassess`, {
+    method: 'POST',
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Reassessment failed');
+  }
+  return res.json();
+}
+
+export async function resendAdvisoryNotification(
+  advisoryId: string,
+  payload: AdvisoryResendRequest = {},
+  token?: string
+): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/admin/advisories/${advisoryId}/resend`, {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Notification resend failed');
+  }
+  return res.json();
+}
+
+export async function recordAdvisoryFeedback(
+  advisoryId: string,
+  payload: AdvisoryFeedbackRequest,
+  token?: string
+): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/admin/advisories/${advisoryId}/feedback`, {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Feedback recording failed');
+  }
+  return res.json();
+}
+
+export async function fetchAuditLogs(
+  params: {
+    advisory_id?: string;
+    farmer_id?: string;
+    farm_id?: string;
+    event_type?: string;
+    page?: number;
+    page_size?: number;
+  } = {},
+  token?: string
+): Promise<AuditLogsListResponse> {
+  const query = new URLSearchParams();
+  if (params.advisory_id) query.append('advisory_id', params.advisory_id);
+  if (params.farmer_id) query.append('farmer_id', params.farmer_id);
+  if (params.farm_id) query.append('farm_id', params.farm_id);
+  if (params.event_type) query.append('event_type', params.event_type);
+  if (params.page) query.append('page', params.page.toString());
+  if (params.page_size) query.append('page_size', params.page_size.toString());
+
+  const res = await fetch(`${API_BASE_URL}/admin/audit-logs?${query.toString()}`, {
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch audit logs');
+  }
+  return res.json();
+}
+
+export async function fetchImpactMetrics(token?: string): Promise<ImpactMeasurementResponse> {
+  const res = await fetch(`${API_BASE_URL}/admin/impact`, {
+    headers: adminHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch impact metrics');
+  }
+  return res.json();
+}
+
+
 
 

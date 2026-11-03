@@ -30,5 +30,10 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
 # Temp / Brain
 .system_generated

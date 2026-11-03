@@ -21,7 +21,7 @@ export const Sidebar: React.FC = () => {
     { id: 'overview', label: 'Overview Dashboard', icon: LayoutDashboard },
     { id: 'climate-hub', label: 'Climate Intelligence', icon: CloudSun },
     { id: 'farmers', label: 'Farmers Directory', icon: Users },
-    { id: 'history', label: 'Advisory History', icon: History },
+    { id: 'history', label: 'Advisory & Audit Logs', icon: History, badge: 'Audit Trail' },
   ];
 
   return (

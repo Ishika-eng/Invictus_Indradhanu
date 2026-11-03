@@ -35,6 +35,9 @@ class Farmer(Base, TimestampMixin):
     country: Mapped[str] = mapped_column(String(100), default="India", nullable=False)
     trust_score: Mapped[float] = mapped_column(Float, default=95.0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    role: Mapped[str] = mapped_column(
+        String(20), default="FARMER", nullable=False, index=True
+    )  # FARMER, OPERATOR, ADMIN
 
     # Multichannel preferences and consent tracking
     preferred_channel: Mapped[str] = mapped_column(

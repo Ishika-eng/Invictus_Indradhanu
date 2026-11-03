@@ -6,6 +6,7 @@ from app.models.climate import ClimateObservation
 from app.models.risk import RiskAssessment
 from app.models.advisory import Advisory
 from app.models.delivery import DeliveryLog
+from app.models.audit import AdvisoryAuditLog
 
 __all__ = [
     "Farmer",
@@ -17,5 +18,6 @@ __all__ = [
     "RiskAssessment",
     "Advisory",
     "DeliveryLog",
+    "AdvisoryAuditLog",
 ]
 
