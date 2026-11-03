@@ -52,6 +52,9 @@ export interface BackendFarmer {
   country: string;
   trust_score: number;
   is_active: boolean;
+  preferred_channel?: string;
+  is_opted_in?: boolean;
+  opt_out_reason?: string;
   farms: BackendFarm[];
 }
 
@@ -688,5 +691,123 @@ export async function listFarmAdvisories(
   }
   return res.json();
 }
+
+// ==============================================================================
+// Stage 6: Real Multichannel Agricultural Advisory Delivery Types & API Client
+// ==============================================================================
+
+export interface DeliveryLogResponse {
+  id: string;
+  advisory_id: string;
+  farmer_id: string;
+  channel: 'SMS' | 'VOICE_IVR' | 'WHATSAPP' | string;
+  status: 'QUEUED' | 'SENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | 'SIMULATED' | string;
+  recipient_phone: string;
+  content_snippet?: string;
+  language: string;
+  duration_seconds?: number;
+  carrier_message_id?: string;
+  error_message?: string;
+  provider: string;
+  idempotency_key?: string;
+  retry_count: number;
+  is_simulation: boolean;
+  delivery_metadata?: Record<string, any>;
+  created_at?: string;
+}
+
+export interface DeliveryDispatchRequest {
+  advisory_id: string;
+  channels: string[];
+  simulate?: boolean;
+  custom_phone?: string;
+}
+
+export interface DeliveryDispatchResponse {
+  dispatch_id: string;
+  advisory_id: string;
+  farmer_id: string;
+  channel_outcomes: DeliveryLogResponse[];
+  mode: string;
+  summary: string;
+}
+
+export interface OptOutRequest {
+  phone_number: string;
+  reason?: string;
+}
+
+export interface ChannelPreferenceUpdate {
+  preferred_channel: string;
+  is_opted_in: boolean;
+}
+
+export async function dispatchAdvisory(
+  payload: DeliveryDispatchRequest,
+  token: string
+): Promise<DeliveryDispatchResponse> {
+  const res = await fetch(`${API_BASE_URL}/deliveries/dispatch`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Advisory dispatch failed');
+  }
+  return res.json();
+}
+
+export async function fetchDeliveryHistory(
+  advisoryId?: string,
+  channel?: string,
+  token?: string
+): Promise<DeliveryLogResponse[]> {
+  const params = new URLSearchParams();
+  if (advisoryId) params.append('advisory_id', advisoryId);
+  if (channel) params.append('channel', channel);
+
+  const url = `${API_BASE_URL}/deliveries/history?${params.toString()}`;
+  const headers = token ? authHeaders(token) : { 'Content-Type': 'application/json' };
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    throw new Error('Failed to fetch delivery logs');
+  }
+  return res.json();
+}
+
+export async function optOutFarmer(
+  payload: OptOutRequest,
+  token?: string
+): Promise<{ status: string; message: string; phone_number: string }> {
+  const headers = token ? authHeaders(token) : { 'Content-Type': 'application/json' };
+  const res = await fetch(`${API_BASE_URL}/deliveries/opt-out`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Opt-out failed');
+  }
+  return res.json();
+}
+
+export async function updateFarmerPreferences(
+  payload: ChannelPreferenceUpdate,
+  token: string
+): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/deliveries/preferences`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Preference update failed');
+  }
+  return res.json();
+}
+
 
 

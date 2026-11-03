@@ -347,3 +347,4 @@ class AdvisoryRulesEngine:
         directives.sort(key=lambda d: (d.priority, d.urgency.value))
 
         return directives
+

@@ -33,7 +33,8 @@ export const Step5Recommendation: React.FC = () => {
     farmerName, 
     selectedCrop, 
     selectedLocation,
-    setDemoStep 
+    setDemoStep,
+    setLatestBackendAdvisory,
   } = useAdvisory();
   const { selectedFarm, session } = useAuth();
 
@@ -97,7 +98,10 @@ export const Step5Recommendation: React.FC = () => {
           selectedLanguage,
           session.access_token
         );
-        if (mounted) setLiveAdvisory(adv);
+        if (mounted) {
+          setLiveAdvisory(adv);
+          setLatestBackendAdvisory(adv);
+        }
       } catch (err) {
         console.warn('Live advisory lookup fallback to preset:', err);
       } finally {
@@ -107,7 +111,7 @@ export const Step5Recommendation: React.FC = () => {
 
     loadAdvisory();
     return () => { mounted = false; };
-  }, [selectedFarm?.id, selectedLanguage, session?.access_token]);
+  }, [selectedFarm?.id, selectedLanguage, session?.access_token, setLatestBackendAdvisory]);
 
   const handleRegenerate = async () => {
     if (!selectedFarm?.id || !session?.access_token) return;
@@ -118,6 +122,7 @@ export const Step5Recommendation: React.FC = () => {
         session.access_token
       );
       setLiveAdvisory(adv);
+      setLatestBackendAdvisory(adv);
     } catch (err) {
       console.warn('Regeneration error:', err);
     } finally {

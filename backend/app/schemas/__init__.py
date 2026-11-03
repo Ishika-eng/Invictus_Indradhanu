@@ -44,7 +44,15 @@ from app.schemas.risk import (
     RiskCategoryScores,
     RiskEvaluationRequest,
 )
-from app.schemas.delivery import DeliveryLogBase, DeliveryLogCreate, DeliveryLogResponse
+from app.schemas.delivery import (
+    DeliveryLogBase,
+    DeliveryLogCreate,
+    DeliveryLogResponse,
+    DeliveryDispatchRequest,
+    DeliveryDispatchResponse,
+    OptOutRequest,
+    ChannelPreferenceUpdate,
+)
 from app.schemas.advisory import (
     AdvisoryBase,
     AdvisoryCreate,
@@ -97,6 +105,10 @@ __all__ = [
     "DeliveryLogBase",
     "DeliveryLogCreate",
     "DeliveryLogResponse",
+    "DeliveryDispatchRequest",
+    "DeliveryDispatchResponse",
+    "OptOutRequest",
+    "ChannelPreferenceUpdate",
     "AdvisoryBase",
     "AdvisoryCreate",
     "AdvisoryResponse",

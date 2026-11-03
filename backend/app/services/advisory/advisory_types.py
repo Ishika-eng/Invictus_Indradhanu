@@ -58,3 +58,4 @@ class FarmerAdvisoryOutput(BaseModel):
     language: str = "en"
     model_version: str = "rules_v1+gemini-1.5-flash"
     translations: Optional[Dict[str, Any]] = None
+

@@ -59,6 +59,17 @@ class DuplicateEntityException(AppException):
         )
 
 
+class ValidationException(AppException):
+    """Raised when business or domain validation fails."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            details=details or {},
+        )
+
+
 class DatabaseConnectivityException(AppException):
     """Raised when database health check or connectivity fails."""
 

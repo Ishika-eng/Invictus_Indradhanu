@@ -36,6 +36,13 @@ class Farmer(Base, TimestampMixin):
     trust_score: Mapped[float] = mapped_column(Float, default=95.0, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Multichannel preferences and consent tracking
+    preferred_channel: Mapped[str] = mapped_column(
+        String(20), default="SMS", nullable=False
+    )  # SMS, VOICE_IVR, WHATSAPP, ALL
+    is_opted_in: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    opt_out_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
     # Relationships
     farms: Mapped[List["Farm"]] = relationship(
         "Farm", back_populates="farmer", cascade="all, delete-orphan", lazy="selectin"

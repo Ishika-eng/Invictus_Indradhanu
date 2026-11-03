@@ -20,6 +20,7 @@ import {
   MOCK_DEFAULT_ADVISORY, 
   INITIAL_METRICS 
 } from '../data/mockData';
+import { BackendAdvisory } from '../services/api';
 
 export type DemoStep = 1 | 2 | 3 | 4 | 5 | 6;
 export type DeliveryChannelChoice = 'sms' | 'voice' | 'mobile';
@@ -178,6 +179,8 @@ interface AdvisoryContextType {
   metrics: MetricSummary;
   allFarmers: FarmerProfile[];
   addNewFarmer: (farmer: FarmerProfile) => void;
+  latestBackendAdvisory: BackendAdvisory | null;
+  setLatestBackendAdvisory: (adv: BackendAdvisory | null) => void;
 }
 
 const AdvisoryContext = createContext<AdvisoryContextType | undefined>(undefined);
@@ -220,6 +223,7 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [allFarmers, setAllFarmers] = useState<FarmerProfile[]>(SAMPLE_FARMERS);
   const [selectedFarmer, setSelectedFarmer] = useState<FarmerProfile>(SAMPLE_FARMERS[0]);
   const [activeAdvisory, setActiveAdvisory] = useState<AIAdvisory>(MOCK_DEFAULT_ADVISORY);
+  const [latestBackendAdvisory, setLatestBackendAdvisory] = useState<BackendAdvisory | null>(null);
   const [metrics, setMetrics] = useState<MetricSummary>(INITIAL_METRICS);
 
   const togglePresentationMode = () => {
@@ -336,6 +340,8 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
       metrics,
       allFarmers,
       addNewFarmer,
+      latestBackendAdvisory,
+      setLatestBackendAdvisory,
     }}>
       {children}
     </AdvisoryContext.Provider>

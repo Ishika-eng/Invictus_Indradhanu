@@ -321,3 +321,4 @@ async def test_api_generate_and_get_latest_advisory(client: AsyncClient, db_sess
         advisory_en = res_en.json()
         assert advisory_en["language"] == "en"
         assert "irrigation" in advisory_en["immediate_action"].lower()
+

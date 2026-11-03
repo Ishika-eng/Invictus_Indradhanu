@@ -59,6 +59,30 @@ class Settings(BaseSettings):
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
     NASA_POWER_BASE_URL: str = "https://power.larc.nasa.gov/api/temporal"
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+
+    # Stage 6: Multichannel Advisory Communication Settings
+    COMMUNICATION_MODE: str = "SIMULATION"  # "SIMULATION" or "LIVE"
+    
+    # SMS: MSG91 & Indian DLT (Distributed Ledger Technology) Configuration
+    MSG91_AUTH_KEY: str = ""
+    MSG91_SENDER_ID: str = "INDRDH"
+    MSG91_DLT_TE_ID: str = ""
+    
+    # Voice IVR: Exotel & TTS Configuration
+    EXOTEL_API_KEY: str = ""
+    EXOTEL_API_TOKEN: str = ""
+    EXOTEL_SUBDOMAIN: str = "api.exotel.com"
+    EXOTEL_CALLER_ID: str = ""
+    EXOTEL_APP_ID: str = ""
+    
+    # WhatsApp: Meta Cloud API Configuration
+    META_WHATSAPP_TOKEN: str = ""
+    META_WHATSAPP_PHONE_NUMBER_ID: str = ""
+    META_WHATSAPP_VERIFY_TOKEN: str = "indradhanu_secure_webhook_verify_token"
+    META_WHATSAPP_APP_SECRET: str = ""
+
+    # Legacy Twilio fields (fallback/development)
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_PHONE_NUMBER: str = ""

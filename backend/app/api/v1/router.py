@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     climate,
     risk,
     advisories,
+    deliveries,
 )
 
 api_router = APIRouter()
@@ -22,4 +23,5 @@ api_router.include_router(climate.router, prefix="/farms", tags=["Climate Integr
 api_router.include_router(risk.router, prefix="/farms", tags=["Risk Assessment"])
 api_router.include_router(crops.router, prefix="/crops", tags=["Crops"])
 api_router.include_router(advisories.router, prefix="/advisories", tags=["Advisories"])
+api_router.include_router(deliveries.router, prefix="/deliveries", tags=["Multichannel Delivery"])
 

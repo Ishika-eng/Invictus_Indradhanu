@@ -241,3 +241,4 @@ class AdvisoryGenerationService:
             )
 
         return latest
+
