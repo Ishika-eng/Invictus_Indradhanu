@@ -24,7 +24,16 @@ from app.schemas.farmer import (
     FarmerRegistrationRequest,
     AuthMeResponse,
 )
-from app.schemas.climate import ClimateObservationBase, ClimateObservationCreate, ClimateObservationResponse
+from app.schemas.climate import (
+    ClimateObservationBase,
+    ClimateObservationCreate,
+    ClimateObservationResponse,
+    CurrentClimateResponse,
+    ClimateForecastResponse,
+    HistoricalClimateResponse,
+    ClimateRefreshResponse,
+    GDDAnalysisResponse,
+)
 from app.schemas.risk import RiskAssessmentBase, RiskAssessmentCreate, RiskAssessmentResponse
 from app.schemas.delivery import DeliveryLogBase, DeliveryLogCreate, DeliveryLogResponse
 from app.schemas.advisory import AdvisoryBase, AdvisoryCreate, AdvisoryResponse, AdvisoryDetailResponse
@@ -57,6 +66,11 @@ __all__ = [
     "ClimateObservationBase",
     "ClimateObservationCreate",
     "ClimateObservationResponse",
+    "CurrentClimateResponse",
+    "ClimateForecastResponse",
+    "HistoricalClimateResponse",
+    "ClimateRefreshResponse",
+    "GDDAnalysisResponse",
     "RiskAssessmentBase",
     "RiskAssessmentCreate",
     "RiskAssessmentResponse",

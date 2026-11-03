@@ -339,3 +339,160 @@ export async function deleteFarmCrop(
   return res.json();
 }
 
+// ==============================================================================
+// Stage 3: Climate Integration APIs (Open-Meteo & NASA POWER)
+// ==============================================================================
+
+export interface CurrentClimateData {
+  farm_id: string;
+  farm_name: string;
+  latitude: number;
+  longitude: number;
+  data_source: string;
+  observation_type: string;
+  last_updated: string;
+  current: {
+    temperature_c: number;
+    feels_like_c: number;
+    relative_humidity_pct: number;
+    precipitation_mm: number;
+    rain_probability_pct: number;
+    wind_speed_kmh: number;
+    wind_direction_deg: number;
+    weather_code: number;
+    weather_condition: string;
+    weather_description: string;
+    weather_icon: string;
+    timestamp: string;
+  };
+  soil_sensor: {
+    installed: boolean;
+    sensor_id?: string | null;
+    status: string;
+    in_situ_moisture_pct?: number | null;
+    notice: string;
+  };
+}
+
+export interface DailyForecastDay {
+  day_number: number;
+  date: string;
+  temp_max_c: number;
+  temp_min_c: number;
+  precipitation_mm: number;
+  precipitation_probability_pct: number;
+  wind_speed_max_kmh: number;
+  weather_code: number;
+  weather_condition: string;
+  weather_icon: string;
+}
+
+export interface ClimateForecastData {
+  farm_id: string;
+  farm_name: string;
+  latitude: number;
+  longitude: number;
+  data_source: string;
+  observation_type: string;
+  last_updated: string;
+  daily_forecast: DailyForecastDay[];
+  hourly_24h: Array<{
+    time: string;
+    temperature_c: number;
+    humidity_pct: number;
+    precipitation_probability_pct: number;
+    precipitation_mm: number;
+    solar_radiation_wm2: number;
+  }>;
+}
+
+export interface HistoricalClimateData {
+  farm_id: string;
+  farm_name: string;
+  latitude: number;
+  longitude: number;
+  data_source: string;
+  start_date: string;
+  end_date: string;
+  days_analyzed: number;
+  summary: {
+    avg_temp_c?: number | null;
+    total_precipitation_mm: number;
+    avg_relative_humidity_pct?: number | null;
+    avg_solar_radiation_mj_m2?: number | null;
+  };
+  daily_records: Array<{
+    date: string;
+    temperature_avg_c?: number | null;
+    temperature_max_c?: number | null;
+    temperature_min_c?: number | null;
+    precipitation_mm: number;
+    relative_humidity_pct?: number | null;
+    solar_radiation_mj_m2?: number | null;
+  }>;
+  growing_degree_days?: {
+    crop_name: string;
+    supported: boolean;
+    t_base_c?: number;
+    accumulated_gdd?: number;
+    target_maturity_gdd?: number;
+    thermal_maturity_pct?: number;
+    days_evaluated: number;
+    summary_note: string;
+  } | null;
+}
+
+export async function fetchFarmCurrentClimate(
+  farmId: string,
+  token: string
+): Promise<CurrentClimateData> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/climate/current`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch real-time climate data');
+  }
+  return res.json();
+}
+
+export async function fetchFarmClimateForecast(
+  farmId: string,
+  token: string
+): Promise<ClimateForecastData> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/climate/forecast`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch weather forecast');
+  }
+  return res.json();
+}
+
+export async function fetchFarmClimateHistory(
+  farmId: string,
+  token: string,
+  days: number = 30
+): Promise<HistoricalClimateData> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/climate/history?days=${days}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch historical agroclimatology');
+  }
+  return res.json();
+}
+
+export async function refreshFarmClimate(
+  farmId: string,
+  token: string
+): Promise<{ status: string; refreshed_at: string; current: any; daily_forecast: any[] }> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/climate/refresh`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to refresh climate observations');
+  }
+  return res.json();
+}
+

@@ -5,40 +5,41 @@ import {
   Radio, 
   Cpu, 
   CheckCircle2, 
-  ShieldCheck 
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 
 export const DataSourcesTransparency: React.FC = () => {
   const sources = [
     {
       name: 'Open-Meteo',
-      type: 'High-Res Numerical Weather Grid (0.05°)',
-      status: 'LIVE DATA',
-      lastSync: 'Updated 4m ago',
+      type: 'High-Res Numerical Weather Grid (0.05° resolution)',
+      status: 'LIVE NWP',
+      lastSync: 'Real-Time Sync (<30m TTL)',
       icon: Satellite,
       color: 'text-skyalt-600 bg-skyalt-50 border-skyalt-200'
     },
     {
       name: 'NASA POWER',
-      type: 'Solar Radiation & Agro-Climatology',
-      status: 'LIVE DATA',
-      lastSync: 'Updated 12m ago',
+      type: 'Solar Radiation & Agro-Climatology Daily Time-Series',
+      status: 'LIVE ARCHIVE',
+      lastSync: 'Daily Archive Sync',
       icon: Database,
       color: 'text-agri-600 bg-agri-50 border-agri-200'
     },
     {
-      name: 'Local Weather Data',
-      type: 'Ground Doppler & Soil Moisture Nodes',
-      status: 'ACTIVE SENSORS',
-      lastSync: 'Updated 1m ago',
+      name: 'In-Situ IoT Soil Probe',
+      type: 'Capacitive / FDR Ground Telemetry (0-40cm depth)',
+      status: 'AWAITING PROBE',
+      lastSync: 'No Fake Data Allowed',
       icon: Radio,
       color: 'text-earth-600 bg-earth-50 border-earth-200'
     },
     {
-      name: 'AI Advisory Engine',
-      type: 'Crop-Soil Phenology Formula Matrix v2.4',
-      status: 'CALIBRATED',
-      lastSync: 'Ready for Dispatch',
+      name: 'Thermal GDD Engine',
+      type: 'Crop-Specific Growing Degree Day Heat Unit Accumulation',
+      status: 'ACTIVE MODEL',
+      lastSync: 'Dynamic Thermal Calc',
       icon: Cpu,
       color: 'text-moss-700 bg-canvas-200 border-canvas-300'
     },
@@ -65,6 +66,8 @@ export const DataSourcesTransparency: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {sources.map((src) => {
           const Icon = src.icon;
+          const isAwaiting = src.status === 'AWAITING PROBE';
+
           return (
             <div
               key={src.name}
@@ -75,7 +78,11 @@ export const DataSourcesTransparency: React.FC = () => {
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${src.color}`}>
                     <Icon className="w-4 h-4" />
                   </div>
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-white border border-canvas-300 text-moss-700">
+                  <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border ${
+                    isAwaiting 
+                      ? 'bg-slate-100 text-slate-700 border-slate-300' 
+                      : 'bg-white border-canvas-300 text-moss-700'
+                  }`}>
                     {src.status}
                   </span>
                 </div>
@@ -88,9 +95,18 @@ export const DataSourcesTransparency: React.FC = () => {
                 </p>
               </div>
 
-              <div className="mt-3 pt-2 border-t border-canvas-200/80 text-[10px] text-agri-700 font-mono flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-agri-600" />
-                <span>{src.lastSync}</span>
+              <div className="mt-3 pt-2 border-t border-canvas-200/80 text-[10px] font-mono flex items-center gap-1">
+                {isAwaiting ? (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-slate-500" />
+                    <span className="text-slate-600">{src.lastSync}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-agri-600" />
+                    <span className="text-agri-700">{src.lastSync}</span>
+                  </>
+                )}
               </div>
             </div>
           );
