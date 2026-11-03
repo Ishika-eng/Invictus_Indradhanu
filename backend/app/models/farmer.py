@@ -1,5 +1,5 @@
 import uuid
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import Boolean, Float, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,9 @@ class Farmer(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid, primary_key=True, default=uuid.uuid4
+    )
+    supabase_user_id: Mapped[Optional[str]] = mapped_column(
+        String(64), unique=True, index=True, nullable=True
     )
     full_name: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     phone_number: Mapped[str] = mapped_column(

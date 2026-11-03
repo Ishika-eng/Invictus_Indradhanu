@@ -3,7 +3,8 @@ from typing import List
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_farmer
+from app.models.farmer import Farmer
 from app.schemas.farmer import (
     FarmerCreate,
     FarmerUpdate,
@@ -14,6 +15,32 @@ from app.schemas.common import StatusMessage
 from app.services.farmer_service import FarmerService
 
 router = APIRouter()
+
+
+@router.get(
+    "/me",
+    response_model=FarmerDetailResponse,
+    summary="Get authenticated farmer profile",
+    description="Retrieve the authenticated farmer's profile and farms using Supabase Auth token.",
+)
+async def get_my_farmer_profile(
+    current_farmer: Farmer = Depends(get_current_farmer),
+):
+    return current_farmer
+
+
+@router.put(
+    "/me",
+    response_model=FarmerResponse,
+    summary="Update authenticated farmer profile",
+    description="Update profile fields for the authenticated farmer.",
+)
+async def update_my_farmer_profile(
+    data: FarmerUpdate,
+    current_farmer: Farmer = Depends(get_current_farmer),
+    db: AsyncSession = Depends(get_db),
+):
+    return await FarmerService.update(db, current_farmer.id, data)
 
 
 @router.get(
@@ -81,4 +108,3 @@ async def delete_farmer(
 ):
     await FarmerService.delete(db, farmer_id)
     return StatusMessage(success=True, message=f"Farmer {farmer_id} deleted successfully")
-

@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_ECHO_SQL: bool = False
 
+    # Supabase Auth & JWT Configuration
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_JWT_SECRET: str = "dev-secret-change-in-production-supabase-jwt"
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+
     # External APIs (Pre-configured for future phases)
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
     NASA_POWER_BASE_URL: str = "https://power.larc.nasa.gov/api/temporal"

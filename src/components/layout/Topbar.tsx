@@ -8,9 +8,13 @@ import {
   ChevronDown,
   Presentation,
   Check,
-  Minimize2
+  Minimize2,
+  Phone,
+  UserCheck,
+  LogOut
 } from 'lucide-react';
 import { useAdvisory, ActiveTab } from '../../context/AdvisoryContext';
+import { useAuth } from '../../context/AuthContext';
 import { Language } from '../../types/advisory';
 
 export const Topbar: React.FC = () => {
@@ -22,6 +26,8 @@ export const Topbar: React.FC = () => {
     isPresentationMode,
     togglePresentationMode
   } = useAdvisory();
+
+  const { user, farmer, isRegistered, logout, setAuthModalOpen } = useAuth();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
@@ -89,8 +95,36 @@ export const Topbar: React.FC = () => {
         </div>
 
         {/* Right Action Bar */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           
+          {/* USER AUTH STATUS OR LOGIN BUTTON */}
+          {user ? (
+            <div className="flex items-center gap-1.5 bg-agri-50 border border-agri-200 px-2.5 py-1.5 rounded-xl shadow-xs">
+              <UserCheck className="w-3.5 h-3.5 text-agri-700 shrink-0" />
+              <span className="text-xs font-bold text-agri-900 hidden sm:inline max-w-[120px] truncate">
+                {farmer ? farmer.full_name : (user.phone || 'Farmer')}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                title="Log out"
+                className="p-1 rounded text-moss-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-0.5"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAuthModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-agri-800 bg-canvas-100 hover:bg-canvas-200 border border-canvas-300 shadow-sm transition-all"
+            >
+              <Phone className="w-3.5 h-3.5 text-agri-600" />
+              <span className="hidden sm:inline">Farmer Login</span>
+              <span className="sm:hidden">Login</span>
+            </button>
+          )}
+
           {/* PRESENTATION MODE TOGGLE BUTTON */}
           <button
             onClick={togglePresentationMode}
@@ -102,7 +136,7 @@ export const Topbar: React.FC = () => {
             title="Toggle Clean Full-Width Presentation View"
           >
             {isPresentationMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Presentation className="w-3.5 h-3.5 text-agri-700" />}
-            <span className="hidden sm:inline">{isPresentationMode ? 'Exit Demo Mode' : 'Presentation Mode'}</span>
+            <span className="hidden sm:inline">{isPresentationMode ? 'Exit Demo' : 'Presentation'}</span>
             <span className="sm:hidden">Demo</span>
           </button>
 
@@ -111,11 +145,11 @@ export const Topbar: React.FC = () => {
             <button
               type="button"
               onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-              className="flex items-center gap-2 bg-canvas-100 hover:bg-canvas-200 px-3 py-1.5 rounded-xl border border-canvas-300 text-xs font-bold text-agri-950 transition-all shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 bg-canvas-100 hover:bg-canvas-200 px-2.5 sm:px-3 py-1.5 rounded-xl border border-canvas-300 text-xs font-bold text-agri-950 transition-all shadow-sm active:scale-95"
               aria-expanded={languageDropdownOpen}
             >
-              <Globe2 className="w-3.5 h-3.5 text-agri-700" />
-              <span>{currentLang.native} ({currentLang.label})</span>
+              <Globe2 className="w-3.5 h-3.5 text-agri-700 shrink-0" />
+              <span>{currentLang.native}</span>
               <ChevronDown className={`w-3.5 h-3.5 text-moss-500 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -154,10 +188,11 @@ export const Topbar: React.FC = () => {
           {/* Primary CTA: Farmer Advisory Flow */}
           <button
             onClick={() => setActiveTab('advisory-wizard')}
-            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-agri-700 to-agri-800 text-white text-xs sm:text-sm font-extrabold shadow-soft hover:shadow-glow-agri transition-all active:scale-95 group"
+            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-agri-700 to-agri-800 text-white text-xs sm:text-sm font-extrabold shadow-soft hover:shadow-glow-agri transition-all active:scale-95 group"
           >
             <Sparkles className="w-4 h-4 text-agri-300 group-hover:rotate-12 transition-transform" />
-            <span>Advisory Demo</span>
+            <span className="hidden sm:inline">Advisory Demo</span>
+            <span className="sm:hidden">Advisory</span>
           </button>
         </div>
       </div>

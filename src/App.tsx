@@ -6,6 +6,7 @@ import { HeroAdvisoryJourney } from './components/advisory-wizard/HeroAdvisoryJo
 import { ClimateIntelligenceHub } from './components/climate/ClimateIntelligenceHub';
 import { FarmersDirectory } from './components/farmers/FarmersDirectory';
 import { AdvisoryHistory } from './components/history/AdvisoryHistory';
+import { AuthModal } from './components/auth/AuthModal';
 import { useAdvisory } from './context/AdvisoryContext';
 import { Leaf, Presentation, X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
@@ -149,6 +150,9 @@ export const App: React.FC = () => {
           </footer>
         )}
       </div>
+
+      {/* Global Phone OTP Authentication Modal */}
+      <AuthModal />
     </div>
   );
 };
