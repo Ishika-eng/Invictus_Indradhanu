@@ -1,0 +1,76 @@
+{
+  "expo": {
+    "name": "Indradhanu Farmer",
+    "slug": "indradhanu-farmer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "indradhanu",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1B4332"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.indradhanu.farmer",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Indradhanu needs your farm GPS location to retrieve hyperlocal weather models and crop risk assessments.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Indradhanu uses farm GPS location to monitor weather conditions and deliver extreme weather advisories.",
+        "NSMicrophoneUsageDescription": "Allows playback of spoken regional agronomic advisory voice notes.",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1B4332"
+      },
+      "package": "com.indradhanu.farmer",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "POST_NOTIFICATIONS",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Indradhanu to use your location for accurate farm climate forecasts."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2D6A4F"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "indradhanu-farmer-mobile"
+      }
+    }
+  }
+}
+

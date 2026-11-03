@@ -64,3 +64,4 @@ class AdvisoryAuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<AdvisoryAuditLog(id={self.id}, advisory_id={self.advisory_id}, event='{self.event_type}')>"
+

@@ -263,3 +263,4 @@ async def get_impact_measurement(
 ):
     impact = await AdminService.get_impact_metrics(db)
     return impact
+

@@ -96,3 +96,4 @@ class AuditService:
         result = await db.execute(query)
         logs = list(result.scalars().all())
         return logs, total
+

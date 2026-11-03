@@ -1,0 +1,238 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { UserCheck, MapPin, Globe } from 'lucide-react-native';
+import { COLORS } from '../../src/constants/colors';
+import { useAuth } from '../../src/context/AuthContext';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { FarmerButton } from '../../src/components/FarmerButton';
+import { SupportedLanguage } from '../../src/localization/translations';
+
+const LANG_OPTIONS: { code: SupportedLanguage; label: string }[] = [
+  { code: 'mr', label: 'मराठी (Marathi)' },
+  { code: 'hi', label: 'हिंदी (Hindi)' },
+  { code: 'te', label: 'తెలుగు (Telugu)' },
+  { code: 'en', label: 'English' },
+];
+
+export default function RegisterProfileScreen() {
+  const router = useRouter();
+  const { registerProfile } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+
+  const [fullName, setFullName] = useState('');
+  const [village, setVillage] = useState('');
+  const [district, setDistrict] = useState('');
+  const [state, setState] = useState('Maharashtra');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSubmit = async () => {
+    if (!fullName.trim()) {
+      setErrorMsg(t('enterFullName') || 'Please enter your full name');
+      return;
+    }
+    if (!village.trim()) {
+      setErrorMsg(t('enterVillage') || 'Please enter your village name');
+      return;
+    }
+    if (!district.trim()) {
+      setErrorMsg(t('enterDistrict') || 'Please enter your district');
+      return;
+    }
+
+    setErrorMsg('');
+    setLoading(true);
+
+    try {
+      const res = await registerProfile({
+        full_name: fullName.trim(),
+        village: village.trim(),
+        district: district.trim(),
+        state: state.trim(),
+        preferred_language: language,
+      });
+
+      if (res.success) {
+        router.replace('/(tabs)');
+      } else {
+        setErrorMsg(res.error || 'Failed to complete profile');
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Error saving profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.keyboardContainer}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.headerArea}>
+          <View style={styles.iconCircle}>
+            <UserCheck color={COLORS.primary} size={36} />
+          </View>
+          <Text style={styles.title}>{t('farmerProfileTitle') || 'Farmer Profile Setup'}</Text>
+          <Text style={styles.subtitle}>
+            {t('farmerProfileDesc') || 'Complete your profile to receive localized crop and weather advisories.'}
+          </Text>
+        </View>
+
+        <View style={styles.formArea}>
+          <Text style={styles.label}>{t('fullName') || 'Full Name (नाव)'} *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Ramesh Shankar Patil"
+            placeholderTextColor={COLORS.textMuted}
+            value={fullName}
+            onChangeText={setFullName}
+          />
+
+          <Text style={styles.label}>{t('village') || 'Village (गाव)'} *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Baramati"
+            placeholderTextColor={COLORS.textMuted}
+            value={village}
+            onChangeText={setVillage}
+          />
+
+          <Text style={styles.label}>{t('district') || 'District (जिल्हा)'} *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Pune"
+            placeholderTextColor={COLORS.textMuted}
+            value={district}
+            onChangeText={setDistrict}
+          />
+
+          <Text style={styles.label}>{t('preferredLanguage') || 'Advisory Language'}</Text>
+          <View style={styles.langGrid}>
+            {LANG_OPTIONS.map((item) => {
+              const isSelected = language === item.code;
+              return (
+                <TouchableOpacity
+                  key={item.code}
+                  style={[styles.langChip, isSelected && styles.langChipSelected]}
+                  onPress={() => setLanguage(item.code)}
+                >
+                  <Text style={[styles.langChipText, isSelected && styles.langChipTextSelected]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {errorMsg ? <Text style={styles.errorText}>⚠️ {errorMsg}</Text> : null}
+        </View>
+
+        <View style={styles.footerArea}>
+          <FarmerButton
+            title={t('saveAndContinue') || 'Save Profile & Continue'}
+            onPress={handleSubmit}
+            loading={loading}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  container: {
+    flexGrow: 1,
+    padding: 24,
+    justifyContent: 'space-between',
+  },
+  headerArea: {
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  iconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 12,
+  },
+  formArea: {
+    marginVertical: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  input: {
+    height: 52,
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: COLORS.textDark,
+  },
+  langGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  langChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+  },
+  langChipSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#E8F5E9',
+  },
+  langChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  langChipTextSelected: {
+    color: COLORS.primaryDark,
+    fontWeight: '700',
+  },
+  errorText: {
+    color: COLORS.riskCritical,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  footerArea: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+});

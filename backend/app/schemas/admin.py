@@ -153,3 +153,4 @@ class ImpactMeasurementResponse(BaseModel):
     farmer_reported: Dict[str, Any] = Field(..., description="From verified feedback submitted by farmers/operators")
     model_estimated: Dict[str, Any] = Field(..., description="Agronomic projections based on evapotranspiration & loss models")
     measurement_transparency_note: str
+
