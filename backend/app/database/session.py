@@ -46,11 +46,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-async def check_db_connectivity() -> bool:
+async def check_db_connectivity(session: AsyncSession | None = None) -> bool:
     """Executes a lightweight query to verify active database connectivity."""
     try:
-        async with AsyncSessionLocal() as session:
+        if session is not None:
             await session.execute(text("SELECT 1"))
+            return True
+        async with AsyncSessionLocal() as sess:
+            await sess.execute(text("SELECT 1"))
             return True
     except Exception as exc:
         logger.error(f"Database connectivity check failed: {exc}")

@@ -27,11 +27,9 @@ def verify_supabase_jwt(token: str) -> SupabaseUser:
     checks expiration, and extracts claims.
     """
     try:
-        # Check if JWT secret is available for cryptographic HMAC-SHA256 verification
+        # Check if JWT secret is available and not a placeholder for cryptographic HMAC-SHA256 verification
         secret = settings.SUPABASE_JWT_SECRET
-        
-        # When secret is configured and not default dev placeholder in production:
-        verify_signature = bool(secret)
+        verify_signature = bool(secret and "YOUR_JWT_SECRET" not in secret)
         
         decode_kwargs: Dict[str, Any] = {
             "algorithms": ["HS256", "RS256", "ES256"],

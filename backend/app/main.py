@@ -68,7 +68,7 @@ app.add_exception_handler(Exception, generic_exception_handler)
     summary="Root Service Health Status",
 )
 async def root_health(db: AsyncSession = Depends(get_db)):
-    db_alive = await check_db_connectivity()
+    db_alive = await check_db_connectivity(db)
     if not db_alive:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

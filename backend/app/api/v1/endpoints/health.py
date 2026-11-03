@@ -16,7 +16,7 @@ router = APIRouter()
     description="Returns service availability, version, environment, and verifies live database connectivity.",
 )
 async def check_health(db: AsyncSession = Depends(get_db)):
-    db_alive = await check_db_connectivity()
+    db_alive = await check_db_connectivity(db)
     if not db_alive:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
