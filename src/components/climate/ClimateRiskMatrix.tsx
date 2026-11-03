@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   Sparkles, 
@@ -13,44 +13,84 @@ import {
   Cpu
 } from 'lucide-react';
 import { useAdvisory } from '../../context/AdvisoryContext';
+import { useAuth } from '../../context/AuthContext';
+import { fetchLatestFarmRisk, RiskAssessmentData } from '../../services/api';
 
 export const ClimateRiskMatrix: React.FC = () => {
-  const { activeAdvisory, selectedCrop, selectedFarmer } = useAdvisory();
+  const { activeAdvisory, selectedCrop, selectedLocation } = useAdvisory();
+  const { selectedFarm, session } = useAuth();
+
+  const [riskData, setRiskData] = useState<RiskAssessmentData | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadRisk() {
+      if (!selectedFarm?.id || !session?.access_token) return;
+      try {
+        const data = await fetchLatestFarmRisk(selectedFarm.id, session.access_token);
+        if (mounted) setRiskData(data);
+      } catch (err) {
+        console.warn('Risk matrix API fallback:', err);
+      }
+    }
+    loadRisk();
+    return () => { mounted = false; };
+  }, [selectedFarm?.id, session?.access_token]);
+
+  const scores = riskData?.category_scores;
+  const categories = riskData?.categories;
+
+  // Build dynamic triggers from backend categories or fallback
+  const rainItem = categories?.rainfall_waterlogging;
+  const diseaseItem = categories?.humidity_disease;
+  const heatItem = categories?.heat_stress;
+  const windItem = categories?.high_wind;
+
+  const getSeverity = (score: number | null | undefined): 'critical' | 'caution' | 'normal' => {
+    if (!score) return 'normal';
+    if (score >= 70) return 'critical';
+    if (score >= 40) return 'caution';
+    return 'normal';
+  };
 
   const riskTriggers = [
     {
       title: 'Convective Rain & Waterlogging',
-      value: '82% Probability (38.5mm)',
-      severity: 'critical' as const,
-      trend: 'rising' as const,
-      desc: 'Severe root hypoxia & blossom drop risk if flooded.',
+      value: `${scores ? scores.rainfall + '/100' : '82% Probability'}`,
+      severity: getSeverity(scores?.rainfall ?? 78),
+      desc: rainItem?.explanation || 'Severe root hypoxia & blossom drop risk if flooded during vegetative canopy growth.',
       icon: CloudRain,
+      driver: rainItem?.driver_factors?.[0],
     },
     {
-      title: 'Fungal Blight / Mildew Spore Window',
-      value: 'High Spore Index (78% RH)',
-      severity: 'caution' as const,
-      trend: 'rising' as const,
-      desc: 'High relative humidity combined with 30°C temperature triggers spore germination.',
+      title: 'Fungal Blight & Spore Incubation',
+      value: `${scores ? scores.disease + '/100' : 'High Spore Index'}`,
+      severity: getSeverity(scores?.disease ?? 65),
+      desc: diseaseItem?.explanation || 'High relative humidity combined with warm temperatures accelerates pathogen germination.',
       icon: Bug,
+      driver: diseaseItem?.driver_factors?.[0],
     },
     {
       title: 'Heat Stress / Thermal Shock',
-      value: '31.4°C Air / 34.8°C Feels',
-      severity: 'normal' as const,
-      trend: 'stable' as const,
-      desc: 'Within manageable threshold for current vegetative canopy.',
+      value: `${scores ? scores.heat + '/100' : '31.4°C Air'}`,
+      severity: getSeverity(scores?.heat ?? 32),
+      desc: heatItem?.explanation || 'Temperature remains within safe agronomic parameters for current growth phase.',
       icon: ThermometerSnowflake,
+      driver: heatItem?.driver_factors?.[0],
     },
     {
       title: 'Wind Gust & Lodging Hazard',
-      value: '18 km/h Sustained (28km/h Gusts)',
-      severity: 'caution' as const,
-      trend: 'rising' as const,
-      desc: 'Foliar spray drift hazard; spray should only be executed during calm morning hours.',
+      value: `${scores ? scores.wind + '/100' : '18 km/h Sustained'}`,
+      severity: getSeverity(scores?.wind ?? 28),
+      desc: windItem?.explanation || 'Foliar spray drift hazard; spray operations should only be executed in calm conditions.',
       icon: Wind,
+      driver: windItem?.driver_factors?.[0],
     }
   ];
+
+  const reasoningChain = riskData?.contributing_factors && riskData.contributing_factors.length > 0
+    ? riskData.contributing_factors
+    : activeAdvisory.scientificReasoning;
 
   return (
     <div className="rounded-3xl bg-white border border-canvas-300 shadow-soft p-5 sm:p-6">
@@ -61,18 +101,18 @@ export const ClimateRiskMatrix: React.FC = () => {
               <ShieldAlert className="w-4 h-4" />
             </span>
             <h3 className="font-display font-extrabold text-base sm:text-lg text-moss-900">
-              AI Micro-Climate Risk Engine & Reasoning
+              Crop-Specific Climate Risk Engine & Reasoning
             </h3>
           </div>
           <p className="text-xs text-moss-500 mt-0.5">
-            Crop-phenology vulnerability formulas mapped to real-time satellite telemetry
+            ICAR & FAO phenological thresholds mapped to live farm weather telemetry ({riskData?.crop_evaluated || selectedCrop})
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <div className="flex items-center gap-1.5 bg-agri-50 px-3 py-1 rounded-xl border border-agri-200 text-xs font-bold text-agri-800">
             <Cpu className="w-3.5 h-3.5 text-agri-600" />
-            <span>AI Confidence: {activeAdvisory.confidencePct}%</span>
+            <span>Confidence: {riskData?.confidence_level || 'HIGH'}</span>
           </div>
         </div>
       </div>
@@ -122,6 +162,13 @@ export const ClimateRiskMatrix: React.FC = () => {
               <p className="text-[11px] text-moss-600 mt-2 leading-relaxed">
                 {risk.desc}
               </p>
+
+              {risk.driver && (
+                <div className="mt-2 pt-2 border-t border-canvas-200/60 text-[10px] font-medium text-moss-700 flex items-center gap-1">
+                  <span className="text-agri-600 font-bold">•</span>
+                  <span>{risk.driver}</span>
+                </div>
+              )}
             </div>
           );
         })}
@@ -131,10 +178,10 @@ export const ClimateRiskMatrix: React.FC = () => {
       <div className="mt-4 p-4 rounded-2xl bg-moss-900 text-canvas-100 border border-agri-700/40">
         <h4 className="text-xs font-bold uppercase tracking-wider text-agri-300 mb-2 flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Automated Reasoning Chain</span>
+          <span>Scientific Risk Drivers & Methodology ({riskData?.scoring_methodology || 'ICAR_FAO_MULTI_CRITERIA_RISK_V1'})</span>
         </h4>
         <ul className="space-y-1.5 text-xs text-canvas-200/90 font-mono text-[11px]">
-          {activeAdvisory.scientificReasoning.map((r, i) => (
+          {reasoningChain.map((r, i) => (
             <li key={i} className="flex items-start gap-2">
               <span className="text-agri-400 font-bold">[{i+1}]</span>
               <span>{r}</span>

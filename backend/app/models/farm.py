@@ -73,6 +73,12 @@ class Farm(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    risk_assessments: Mapped[List["RiskAssessment"]] = relationship(
+        "RiskAssessment",
+        back_populates="farm",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     advisories: Mapped[List["Advisory"]] = relationship(
         "Advisory", back_populates="farm", cascade="all, delete-orphan", lazy="selectin"
     )

@@ -45,11 +45,16 @@ class ClimateAggregationService:
     ) -> Dict[str, Any]:
         """Returns current micro-climate for a farm with IoT sensor status and Open-Meteo readings."""
         farm = await cls.get_farm(db, farm_id)
+        farm_id_val = farm.id
+        farm_id_str = str(farm.id)
+        farm_name_str = farm.name
+        farm_lat = farm.latitude
+        farm_lng = farm.longitude
         cache_key = f"current:{round(farm.latitude, 3)}:{round(farm.longitude, 3)}"
 
         weather_data = None if bypass_cache else climate_cache.get(cache_key)
         if not weather_data:
-            weather_data = await OpenMeteoService.fetch_weather(farm.latitude, farm.longitude)
+            weather_data = await OpenMeteoService.fetch_weather(farm_lat, farm_lng)
             climate_cache.set(cache_key, weather_data, ttl_seconds=1800)  # 30 min TTL
 
         current = weather_data["current"]
@@ -57,7 +62,7 @@ class ClimateAggregationService:
         # Persist current observation to database
         try:
             obs = ClimateObservation(
-                farm_id=farm.id,
+                farm_id=farm_id_val,
                 source="OPEN_METEO",
                 observation_type="current",
                 observation_time=datetime.now(timezone.utc),
@@ -85,10 +90,10 @@ class ClimateAggregationService:
             await db.rollback()
 
         return {
-            "farm_id": str(farm.id),
-            "farm_name": farm.name,
-            "latitude": farm.latitude,
-            "longitude": farm.longitude,
+            "farm_id": farm_id_str,
+            "farm_name": farm_name_str,
+            "latitude": farm_lat,
+            "longitude": farm_lng,
             "data_source": "Open-Meteo v1 (WMO-standard NWP)",
             "observation_type": "current_weather",
             "last_updated": weather_data.get("retrieval_timestamp"),
@@ -114,11 +119,16 @@ class ClimateAggregationService:
     ) -> Dict[str, Any]:
         """Returns 7-day daily forecast and 24-hour hourly trend for a farm plot."""
         farm = await cls.get_farm(db, farm_id)
+        farm_id_val = farm.id
+        farm_id_str = str(farm.id)
+        farm_name_str = farm.name
+        farm_lat = farm.latitude
+        farm_lng = farm.longitude
         cache_key = f"forecast:{round(farm.latitude, 3)}:{round(farm.longitude, 3)}"
 
         weather_data = None if bypass_cache else climate_cache.get(cache_key)
         if not weather_data:
-            weather_data = await OpenMeteoService.fetch_weather(farm.latitude, farm.longitude)
+            weather_data = await OpenMeteoService.fetch_weather(farm_lat, farm_lng)
             climate_cache.set(cache_key, weather_data, ttl_seconds=1800)
 
         daily_list = weather_data.get("daily_forecast", [])
@@ -128,7 +138,7 @@ class ClimateAggregationService:
             for day in daily_list:
                 f_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
                 obs = ClimateObservation(
-                    farm_id=farm.id,
+                    farm_id=farm_id_val,
                     source="OPEN_METEO",
                     observation_type="forecast",
                     observation_time=datetime.now(timezone.utc),
@@ -154,10 +164,10 @@ class ClimateAggregationService:
             await db.rollback()
 
         return {
-            "farm_id": str(farm.id),
-            "farm_name": farm.name,
-            "latitude": farm.latitude,
-            "longitude": farm.longitude,
+            "farm_id": farm_id_str,
+            "farm_name": farm_name_str,
+            "latitude": farm_lat,
+            "longitude": farm_lng,
             "data_source": "Open-Meteo v1 (High-Resolution NWP)",
             "observation_type": "7_day_forecast",
             "last_updated": weather_data.get("retrieval_timestamp"),

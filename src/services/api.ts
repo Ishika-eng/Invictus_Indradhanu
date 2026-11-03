@@ -496,3 +496,115 @@ export async function refreshFarmClimate(
   return res.json();
 }
 
+// ==============================================================================
+// Stage 4: Crop-Specific Climate Risk Assessment Types & API Client
+// ==============================================================================
+
+export interface CategoryRiskItem {
+  category_name: string;
+  score: number | null;
+  level: string;
+  is_available: boolean;
+  driver_factors: string[];
+  explanation: string;
+  recommendation_hint?: string | null;
+}
+
+export interface DailyRiskTimelineItem {
+  day_number: number;
+  date: string;
+  overall_score: number;
+  overall_level: string;
+  primary_risk_category: string;
+  rainfall_risk_score: number;
+  heat_risk_score: number;
+  cold_risk_score: number;
+  wind_risk_score: number;
+  weather_condition: string;
+  weather_icon: string;
+}
+
+export interface RiskCategoryScores {
+  rainfall: number;
+  heat: number;
+  cold: number;
+  disease: number;
+  wind: number;
+  soil_moisture?: number | null;
+}
+
+export interface RiskAssessmentData {
+  assessment_id?: string;
+  farm_id: string;
+  farm_name?: string;
+  overall_risk_score: number;
+  overall_risk_level: string;
+  confidence_level: string;
+  scoring_methodology: string;
+  crop_evaluated: string;
+  growth_stage_evaluated: string;
+  assessment_timestamp: string;
+  category_scores: RiskCategoryScores;
+  categories?: Record<string, CategoryRiskItem>;
+  contributing_factors: string[];
+  daily_timeline: DailyRiskTimelineItem[];
+  input_snapshot?: Record<string, any>;
+}
+
+export async function fetchLatestFarmRisk(
+  farmId: string,
+  token: string
+): Promise<RiskAssessmentData> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/risk/latest`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch latest risk assessment');
+  }
+  return res.json();
+}
+
+export async function evaluateFarmRisk(
+  farmId: string,
+  payload: { crop_id?: string; stage_id?: string } = {},
+  token: string
+): Promise<RiskAssessmentData> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/risk/evaluate`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to run on-demand risk evaluation');
+  }
+  return res.json();
+}
+
+export async function fetchFarmRiskTimeline(
+  farmId: string,
+  token: string
+): Promise<DailyRiskTimelineItem[]> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/risk/timeline`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch risk timeline');
+  }
+  return res.json();
+}
+
+export async function fetchFarmRiskHistory(
+  farmId: string,
+  token: string,
+  limit: number = 10
+): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/risk/history?limit=${limit}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch risk history');
+  }
+  return res.json();
+}
+
+

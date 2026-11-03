@@ -34,7 +34,16 @@ from app.schemas.climate import (
     ClimateRefreshResponse,
     GDDAnalysisResponse,
 )
-from app.schemas.risk import RiskAssessmentBase, RiskAssessmentCreate, RiskAssessmentResponse
+from app.schemas.risk import (
+    RiskAssessmentBase,
+    RiskAssessmentCreate,
+    RiskAssessmentResponse,
+    DetailedRiskAssessmentResponse,
+    CategoryRiskItem,
+    DailyRiskTimelineItem,
+    RiskCategoryScores,
+    RiskEvaluationRequest,
+)
 from app.schemas.delivery import DeliveryLogBase, DeliveryLogCreate, DeliveryLogResponse
 from app.schemas.advisory import AdvisoryBase, AdvisoryCreate, AdvisoryResponse, AdvisoryDetailResponse
 
@@ -74,6 +83,11 @@ __all__ = [
     "RiskAssessmentBase",
     "RiskAssessmentCreate",
     "RiskAssessmentResponse",
+    "DetailedRiskAssessmentResponse",
+    "CategoryRiskItem",
+    "DailyRiskTimelineItem",
+    "RiskCategoryScores",
+    "RiskEvaluationRequest",
     "DeliveryLogBase",
     "DeliveryLogCreate",
     "DeliveryLogResponse",

@@ -10,33 +10,44 @@ import {
 } from 'lucide-react';
 import { useAdvisory } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
-import { fetchFarmClimateForecast, ClimateForecastData, DailyForecastDay } from '../../services/api';
+import { 
+  fetchFarmClimateForecast, 
+  fetchFarmRiskTimeline,
+  ClimateForecastData, 
+  DailyForecastDay,
+  DailyRiskTimelineItem 
+} from '../../services/api';
 
 export const SevenDayWeatherTimeline: React.FC = () => {
   const { selectedLocation } = useAdvisory();
   const { selectedFarm, session } = useAuth();
 
   const [forecastData, setForecastData] = useState<ClimateForecastData | null>(null);
+  const [riskTimeline, setRiskTimeline] = useState<DailyRiskTimelineItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
-    async function loadForecast() {
+    async function loadData() {
       if (!selectedFarm?.id || !session?.access_token) return;
       setLoading(true);
       try {
-        const data = await fetchFarmClimateForecast(selectedFarm.id, session.access_token);
+        const [forecastRes, riskRes] = await Promise.allSettled([
+          fetchFarmClimateForecast(selectedFarm.id, session.access_token),
+          fetchFarmRiskTimeline(selectedFarm.id, session.access_token),
+        ]);
         if (mounted) {
-          setForecastData(data);
+          if (forecastRes.status === 'fulfilled') setForecastData(forecastRes.value);
+          if (riskRes.status === 'fulfilled') setRiskTimeline(riskRes.value);
         }
       } catch (err) {
-        console.warn('Forecast lookup fallback:', err);
+        console.warn('Forecast/risk lookup fallback:', err);
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    loadForecast();
+    loadData();
     return () => { mounted = false; };
   }, [selectedFarm?.id, session?.access_token]);
 
@@ -141,6 +152,19 @@ export const SevenDayWeatherTimeline: React.FC = () => {
                   }`}>
                     {agriTag.label}
                   </span>
+
+                  {riskTimeline[idx] && (
+                    <div className={`pt-1 text-[9px] font-mono flex items-center justify-center gap-1 ${isToday ? 'text-agri-100' : 'text-moss-600'}`}>
+                      <span className="opacity-75">Risk:</span>
+                      <span className={`font-bold ${
+                        riskTimeline[idx].overall_level === 'CRITICAL' ? 'text-rose-500 font-extrabold' :
+                        riskTimeline[idx].overall_level === 'HIGH' ? 'text-orange-500 font-extrabold' :
+                        riskTimeline[idx].overall_level === 'MODERATE' ? (isToday ? 'text-amber-200' : 'text-amber-600') : (isToday ? 'text-emerald-200' : 'text-emerald-600')
+                      }`}>
+                        {Math.round(riskTimeline[idx].overall_score)}%
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
