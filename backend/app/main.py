@@ -24,6 +24,14 @@ async def lifespan(app: FastAPI):
     db_alive = await check_db_connectivity()
     if db_alive:
         logger.info("Database connectivity verified.")
+        try:
+            from app.database.session import AsyncSessionLocal
+            from app.database.seed_crops import seed_crop_database
+            async with AsyncSessionLocal() as session:
+                seeded = await seed_crop_database(session)
+                logger.info(f"Crop knowledge base initialized: {seeded} new crop(s) seeded.")
+        except Exception as seed_err:
+            logger.warning(f"Crop database seeding noticed: {seed_err}")
     else:
         logger.warning("Database connectivity check failed or initial tables missing.")
     yield

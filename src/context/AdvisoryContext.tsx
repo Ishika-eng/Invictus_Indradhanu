@@ -105,7 +105,8 @@ export type SimplifiedGrowthStage =
   | 'Planting'
   | 'Growing'
   | 'Flowering'
-  | 'Harvesting';
+  | 'Harvesting'
+  | string;
 
 export type ActiveTab = 'advisory-wizard' | 'overview' | 'climate-hub' | 'advisory-result' | 'farmers' | 'history';
 

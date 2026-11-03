@@ -9,6 +9,7 @@ from app.database.spatial import PointGeometry, PolygonGeometry
 if TYPE_CHECKING:
     from app.models.farmer import Farmer
     from app.models.crop import Crop, CropGrowthStage
+    from app.models.farm_crop import FarmCrop
     from app.models.climate import ClimateObservation
     from app.models.advisory import Advisory
 
@@ -54,6 +55,12 @@ class Farm(Base, TimestampMixin):
 
     # Relationships
     farmer: Mapped["Farmer"] = relationship("Farmer", back_populates="farms")
+    farm_crops: Mapped[List["FarmCrop"]] = relationship(
+        "FarmCrop",
+        back_populates="farm",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     active_crop: Mapped[Optional["Crop"]] = relationship(
         "Crop", foreign_keys=[active_crop_id], lazy="selectin"
     )
