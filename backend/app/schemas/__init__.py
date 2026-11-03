@@ -45,7 +45,13 @@ from app.schemas.risk import (
     RiskEvaluationRequest,
 )
 from app.schemas.delivery import DeliveryLogBase, DeliveryLogCreate, DeliveryLogResponse
-from app.schemas.advisory import AdvisoryBase, AdvisoryCreate, AdvisoryResponse, AdvisoryDetailResponse
+from app.schemas.advisory import (
+    AdvisoryBase,
+    AdvisoryCreate,
+    AdvisoryResponse,
+    AdvisoryDetailResponse,
+    AdvisoryGenerateRequest,
+)
 
 __all__ = [
     "HealthResponse",
@@ -95,5 +101,6 @@ __all__ = [
     "AdvisoryCreate",
     "AdvisoryResponse",
     "AdvisoryDetailResponse",
+    "AdvisoryGenerateRequest",
 ]
 

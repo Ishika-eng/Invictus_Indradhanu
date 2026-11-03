@@ -74,3 +74,4 @@ class HumidityDiseaseRiskEvaluator:
             explanation=explanation,
             recommendation_hint="Avoid overhead irrigation; ensure canopy aeration; consider prophylactic bio-fungicide or copper spray.",
         )
+

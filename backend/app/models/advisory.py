@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional, TYPE_CHECKING
-from sqlalchemy import Float, ForeignKey, JSON, String, Text, Uuid
+from sqlalchemy import Boolean, Float, ForeignKey, JSON, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base, TimestampMixin
@@ -53,20 +53,30 @@ class Advisory(Base, TimestampMixin):
     # Structured arrays and multilingual dictionary payloads
     action_steps: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     scientific_reasoning: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    supporting_evidence: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     translations: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # Compliance, Safety & Data Transparency
+    data_limitations: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    model_version: Mapped[Optional[str]] = mapped_column(
+        String(100), default="rule_engine+gemini-1.5-flash", nullable=True
+    )
+    disclaimer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    needs_expert_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # Relationships
-    farmer: Mapped["Farmer"] = relationship("Farmer", back_populates="advisories")
-    farm: Mapped["Farm"] = relationship("Farm", back_populates="advisories")
-    crop: Mapped["Crop"] = relationship("Crop")
-    growth_stage: Mapped[Optional["CropGrowthStage"]] = relationship("CropGrowthStage")
+    farmer: Mapped["Farmer"] = relationship("Farmer", back_populates="advisories", lazy="selectin")
+    farm: Mapped["Farm"] = relationship("Farm", back_populates="advisories", lazy="selectin")
+    crop: Mapped["Crop"] = relationship("Crop", lazy="selectin")
+    growth_stage: Mapped[Optional["CropGrowthStage"]] = relationship("CropGrowthStage", lazy="selectin")
     risk_assessment: Mapped[Optional["RiskAssessment"]] = relationship(
-        "RiskAssessment", back_populates="advisory"
+        "RiskAssessment", back_populates="advisory", lazy="selectin"
     )
     delivery_logs: Mapped[List["DeliveryLog"]] = relationship(
         "DeliveryLog", back_populates="advisory", cascade="all, delete-orphan", lazy="selectin"
     )
 
     def __repr__(self) -> str:
+        return f"<Advisory(id={self.id}, farmer_id={self.farmer_id}, crop_id={self.crop_id}, status='{self.status}')>"
         return f"<Advisory(id={self.id}, farmer_id={self.farmer_id}, crop_id={self.crop_id}, status='{self.status}')>"
 

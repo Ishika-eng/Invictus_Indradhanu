@@ -262,3 +262,4 @@ class CropRiskEngine:
                 "soil_sensor_active": is_in_situ_sensor,
             },
         }
+

@@ -607,4 +607,86 @@ export async function fetchFarmRiskHistory(
   return res.json();
 }
 
+// ==============================================================================
+// Stage 5: AI-Powered Agricultural Advisory Types & API Client
+// ==============================================================================
+
+export interface BackendAdvisory {
+  id: string;
+  farmer_id: string;
+  farm_id: string;
+  crop_id: string;
+  crop_name?: string;
+  growth_stage_id?: string;
+  growth_stage_name?: string;
+  risk_assessment_id?: string;
+  status: string;
+  language: string;
+  confidence_pct: number;
+  immediate_action: string;
+  why_it_matters: string;
+  recommended_timing: string;
+  risk_if_ignored: string;
+  projected_impact?: string;
+  action_steps?: string[];
+  scientific_reasoning?: string[];
+  supporting_evidence?: string[];
+  data_limitations?: string;
+  model_version?: string;
+  disclaimer?: string;
+  needs_expert_review: boolean;
+  created_at?: string;
+  translations?: Record<string, any>;
+}
+
+export interface AdvisoryGenerateRequestPayload {
+  farm_id?: string;
+  crop_id?: string;
+  stage_id?: string;
+  language?: string;
+}
+
+export async function generateFarmAdvisory(
+  payload: AdvisoryGenerateRequestPayload,
+  token: string
+): Promise<BackendAdvisory> {
+  const res = await fetch(`${API_BASE_URL}/advisories/generate`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || err.detail || 'Failed to generate advisory');
+  }
+  return res.json();
+}
+
+export async function fetchLatestFarmAdvisory(
+  farmId: string,
+  language: string = 'mr',
+  token: string
+): Promise<BackendAdvisory> {
+  const res = await fetch(`${API_BASE_URL}/advisories/farms/${farmId}/latest?language=${language}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch latest farm advisory');
+  }
+  return res.json();
+}
+
+export async function listFarmAdvisories(
+  farmId?: string,
+  token?: string
+): Promise<BackendAdvisory[]> {
+  const url = farmId ? `${API_BASE_URL}/advisories/?farm_id=${farmId}` : `${API_BASE_URL}/advisories/`;
+  const headers = token ? authHeaders(token) : { 'Content-Type': 'application/json' };
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    throw new Error('Failed to list advisories');
+  }
+  return res.json();
+}
+
 

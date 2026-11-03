@@ -122,3 +122,4 @@ class TemperatureRiskEvaluator:
             explanation=explanation,
             recommendation_hint="Ensure evening soil moisture retention to insulate root crown from cold night air.",
         )
+

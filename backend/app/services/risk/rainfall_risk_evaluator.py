@@ -107,3 +107,4 @@ class RainfallRiskEvaluator:
             explanation=explanation,
             recommendation_hint="Ensure field drainage trenches are clear; pause fertilizer application if heavy rain is imminent.",
         )
+

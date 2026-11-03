@@ -1,5 +1,6 @@
 import uuid
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.delivery import DeliveryLogResponse
 
@@ -15,7 +16,12 @@ class AdvisoryBase(BaseModel):
     status: str = Field("GENERATED", example="GENERATED")
     action_steps: Optional[List[str]] = None
     scientific_reasoning: Optional[List[str]] = None
-    translations: Optional[dict] = None
+    supporting_evidence: Optional[List[str]] = None
+    data_limitations: Optional[str] = None
+    model_version: Optional[str] = "rule_engine+gemini-1.5-flash"
+    disclaimer: Optional[str] = None
+    needs_expert_review: bool = False
+    translations: Optional[Dict[str, Any]] = None
 
 
 class AdvisoryCreate(AdvisoryBase):
@@ -33,12 +39,21 @@ class AdvisoryResponse(AdvisoryBase):
     crop_id: uuid.UUID
     growth_stage_id: Optional[uuid.UUID] = None
     risk_assessment_id: Optional[uuid.UUID] = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class AdvisoryDetailResponse(AdvisoryResponse):
     delivery_logs: List[DeliveryLogResponse] = []
+    crop_name: Optional[str] = None
+    growth_stage_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class AdvisoryGenerateRequest(BaseModel):
+    farm_id: Optional[uuid.UUID] = None
+    crop_id: Optional[uuid.UUID] = None
+    stage_id: Optional[uuid.UUID] = None
+    language: Optional[str] = Field("mr", description="Target ISO code: 'mr', 'hi', 'te', 'en', 'sw'")
