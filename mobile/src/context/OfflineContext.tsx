@@ -65,3 +65,4 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 };
 
 export const useOffline = () => useContext(OfflineContext);
+
