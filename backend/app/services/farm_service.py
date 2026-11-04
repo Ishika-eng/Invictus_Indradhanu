@@ -67,7 +67,20 @@ class FarmService:
     async def create_for_farmer(
         db: AsyncSession, farmer_id: uuid.UUID, data: FarmBase
     ) -> Farm:
-        """Creates a farm specifically scoped to the authenticated farmer."""
+        """Creates a farm specifically scoped to the authenticated farmer.
+        Prevents duplicate plot creation on network or client retries."""
+        existing = await db.execute(
+            select(Farm).where(
+                Farm.farmer_id == farmer_id,
+                Farm.name == data.name,
+                Farm.latitude == data.latitude,
+                Farm.longitude == data.longitude,
+            )
+        )
+        duplicate = existing.scalar_one_or_none()
+        if duplicate:
+            return duplicate
+
         farm_create = FarmCreate(**data.model_dump(), farmer_id=farmer_id)
         return await FarmService.create(db, farm_create)
 

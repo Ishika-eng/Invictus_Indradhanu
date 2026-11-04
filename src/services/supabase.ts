@@ -42,6 +42,7 @@ export async function signInWithEmail(
 /**
  * Register a new user using email and password.
  * Attaches phone number into user_metadata for agricultural dispatch.
+ * Configures email confirmation redirect URL to return the confirmed user to the web application.
  */
 export async function signUpWithEmail(
   email: string,
@@ -53,10 +54,13 @@ export async function signUpWithEmail(
       ? (phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim().replace(/^0+/, '')}`)
       : undefined;
 
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : undefined;
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: formattedPhone ? { phone_number: formattedPhone } : {},
       },
     });
@@ -67,6 +71,27 @@ export async function signUpWithEmail(
     };
   } catch (err: any) {
     return { session: null, user: null, error: err };
+  }
+}
+
+/**
+ * Resend email confirmation link for an unverified account.
+ */
+export async function resendVerificationEmail(
+  email: string
+): Promise<{ error: Error | null }> {
+  try {
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : undefined;
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+    return { error };
+  } catch (err: any) {
+    return { error: err };
   }
 }
 

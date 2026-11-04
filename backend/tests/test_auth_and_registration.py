@@ -287,3 +287,79 @@ async def test_farmer_registration_and_state_with_email_auth(client: AsyncClient
     assert res_profile.json()["phone_number"] == "+919811223344"
 
 
+@pytest.mark.asyncio
+async def test_registration_retry_duplicate_conflict_and_farm_idempotency(client: AsyncClient):
+    """Enforces duplicate prevention on retries for both farmers and farm plots."""
+    user_id = str(uuid.uuid4())
+    test_email = f"farmer_dup_{user_id[:8]}@example.com"
+    token = create_test_token(user_id, phone=None, email=test_email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    reg_payload = {
+        "full_name": "Suresh Patil",
+        "phone_number": "+919822334455",
+        "email": test_email,
+        "preferred_language": "mr",
+        "village": "Karad",
+        "district": "Satara",
+        "state": "Maharashtra",
+        "country": "India",
+        "farm_name": "Krishna River Plot",
+        "farm_acreage": 4.0,
+        "soil_type": "Alluvial Loam",
+        "irrigation_source": "River Lift",
+        "latitude": 17.2885,
+        "longitude": 74.1837,
+    }
+
+    # 1. First registration succeeds
+    res_first = await client.post("/api/v1/auth/register-farmer", json=reg_payload, headers=headers)
+    assert res_first.status_code == 201
+    farmer_data = res_first.json()
+    assert len(farmer_data["farms"]) == 1
+
+    # 2. Retry / duplicate attempt on /register-farmer returns 409 Conflict
+    res_retry = await client.post("/api/v1/auth/register-farmer", json=reg_payload, headers=headers)
+    assert res_retry.status_code == 409
+    assert "already registered" in str(res_retry.json()).lower()
+
+    # 3. Adding the exact same farm plot (same name, lat, lng) via /farms/me is idempotent and returns existing plot
+    add_plot_payload = {
+        "name": "Krishna River Plot",
+        "latitude": 17.2885,
+        "longitude": 74.1837,
+        "acreage": 4.0,
+        "soil_type": "Alluvial Loam",
+        "irrigation_source": "River Lift",
+    }
+    res_farm_retry = await client.post("/api/v1/farms/me", json=add_plot_payload, headers=headers)
+    assert res_farm_retry.status_code == 201 or res_farm_retry.status_code == 200
+
+    # Ensure farmer still has only 1 plot, not a duplicate
+    res_all_plots = await client.get("/api/v1/farms/me", headers=headers)
+    assert res_all_plots.status_code == 200
+    assert len(res_all_plots.json()) == 1
+
+    # 4. Another user attempting to claim the same phone returns 409
+    other_user = str(uuid.uuid4())
+    other_token = create_test_token(other_user, phone=None, email=f"other_{other_user[:8]}@example.com")
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    res_phone_conflict = await client.post(
+        "/api/v1/auth/register-farmer",
+        json={**reg_payload, "email": f"other_{other_user[:8]}@example.com"},
+        headers=other_headers,
+    )
+    assert res_phone_conflict.status_code == 409
+    assert "phone" in str(res_phone_conflict.json()).lower()
+
+    # 5. Another user attempting to claim the same email returns 409
+    res_email_conflict = await client.post(
+        "/api/v1/auth/register-farmer",
+        json={**reg_payload, "phone_number": "+919999988888", "email": test_email},
+        headers=other_headers,
+    )
+    assert res_email_conflict.status_code == 409
+    assert "email" in str(res_email_conflict.json()).lower()
+
+
+

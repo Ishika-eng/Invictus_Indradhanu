@@ -47,7 +47,7 @@ class FarmerService:
         result = await db.execute(
             select(Farmer)
             .options(selectinload(Farmer.farms))
-            .where(Farmer.email == email)
+            .where(Farmer.email == email.strip().lower())
         )
         return result.scalar_one_or_none()
 
@@ -102,8 +102,54 @@ class FarmerService:
         if not phone.startswith("+"):
             phone = f"+{phone}"
 
-        # Email priority: from Supabase auth token, or from registration request
+        # Email resolution: prioritize Supabase token, then request payload
         email = supabase_user.email or (data.email.strip() if getattr(data, "email", None) else None)
+        if email:
+            email = email.strip().lower()
+
+        # Check for email conflicts against existing registered accounts
+        emails_to_check = set()
+        if supabase_user.email:
+            emails_to_check.add(supabase_user.email.strip().lower())
+        if getattr(data, "email", None) and data.email.strip():
+            emails_to_check.add(data.email.strip().lower())
+
+        for check_email in emails_to_check:
+            existing_email = await FarmerService.get_by_email(db, check_email)
+            if existing_email:
+                if existing_email.supabase_user_id and existing_email.supabase_user_id != supabase_user.user_id:
+                    raise DuplicateEntityException(
+                        f"Farmer with email '{check_email}' is already registered with another account"
+                    )
+                # Re-link unlinked or matching legacy farmer
+                existing_email.supabase_user_id = supabase_user.user_id
+                existing_email.phone_number = phone
+                existing_email.full_name = data.full_name
+                existing_email.preferred_language = data.preferred_language
+                existing_email.village = data.village
+                existing_email.district = data.district
+                existing_email.state = data.state
+                existing_email.country = data.country
+
+                # Prevent duplicate initial farm plot if one already exists
+                if not existing_email.farms:
+                    farm = Farm(
+                        farmer_id=existing_email.id,
+                        name=data.farm_name,
+                        latitude=data.latitude,
+                        longitude=data.longitude,
+                        location_geom=f"SRID=4326;POINT({data.longitude} {data.latitude})",
+                        acreage=data.farm_acreage,
+                        soil_type=data.soil_type,
+                        irrigation_source=data.irrigation_source,
+                        elevation_meters=data.elevation_meters,
+                        micro_zone_name=f"{data.village} Zone ({round(data.latitude, 2)}N, {round(data.longitude, 2)}E)",
+                    )
+                    db.add(farm)
+
+                await db.commit()
+                await db.refresh(existing_email)
+                return existing_email
 
         # Check if phone already registered by another account
         existing_phone = await FarmerService.get_by_phone(db, phone)
@@ -122,6 +168,23 @@ class FarmerService:
             existing_phone.district = data.district
             existing_phone.state = data.state
             existing_phone.country = data.country
+
+            # Prevent duplicate initial farm plot if one already exists
+            if not existing_phone.farms:
+                farm = Farm(
+                    farmer_id=existing_phone.id,
+                    name=data.farm_name,
+                    latitude=data.latitude,
+                    longitude=data.longitude,
+                    location_geom=f"SRID=4326;POINT({data.longitude} {data.latitude})",
+                    acreage=data.farm_acreage,
+                    soil_type=data.soil_type,
+                    irrigation_source=data.irrigation_source,
+                    elevation_meters=data.elevation_meters,
+                    micro_zone_name=f"{data.village} Zone ({round(data.latitude, 2)}N, {round(data.longitude, 2)}E)",
+                )
+                db.add(farm)
+
             await db.commit()
             await db.refresh(existing_phone)
             return existing_phone

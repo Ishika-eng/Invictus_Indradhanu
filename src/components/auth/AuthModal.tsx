@@ -10,21 +10,26 @@ import {
   AlertCircle, 
   Info,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  MailCheck,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { isSupabaseConfigured } from '../../services/supabase';
 
-type AuthMode = 'signin' | 'signup';
+type AuthMode = 'signin' | 'signup' | 'verify-email';
 
 export const AuthModal: React.FC = () => {
-  const { authModalOpen, setAuthModalOpen, signInWithEmail, signUpWithEmail } = useAuth();
+  const { authModalOpen, setAuthModalOpen, signInWithEmail, signUpWithEmail, resendConfirmation } = useAuth();
   
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [awaitingEmail, setAwaitingEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -36,8 +41,10 @@ export const AuthModal: React.FC = () => {
     setEmail('');
     setPassword('');
     setPhoneNumber('');
+    setAwaitingEmail('');
     setErrorMessage(null);
     setSuccessMessage(null);
+    setResendStatus(null);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -60,7 +67,15 @@ export const AuthModal: React.FC = () => {
         handleClose();
       }, 1200);
     } else {
-      setErrorMessage(result.error || 'Failed to sign in. Please verify your credentials.');
+      // Check if error is due to unconfirmed email
+      const errLower = (result.error || '').toLowerCase();
+      if (errLower.includes('email not confirmed') || errLower.includes('unconfirmed')) {
+        setAwaitingEmail(email.trim());
+        setMode('verify-email');
+        setErrorMessage('Your email address has not been verified yet. Please check your inbox.');
+      } else {
+        setErrorMessage(result.error || 'Failed to sign in. Please verify your credentials.');
+      }
     }
   };
 
@@ -90,12 +105,36 @@ export const AuthModal: React.FC = () => {
     setIsLoading(false);
 
     if (result.success) {
-      setSuccessMessage(result.message || 'Account created successfully!');
-      setTimeout(() => {
-        handleClose();
-      }, 1500);
+      // Outcome 1: Session is returned (email confirmation disabled or pre-confirmed)
+      if (result.session) {
+        setSuccessMessage('Account created and authenticated! Loading your farm dashboard...');
+        setTimeout(() => {
+          handleClose();
+        }, 1200);
+      } else {
+        // Outcome 2: User created without session (email confirmation required)
+        setAwaitingEmail(email.trim());
+        setMode('verify-email');
+        setResendStatus(null);
+      }
     } else {
       setErrorMessage(result.error || 'Registration failed. Please try again.');
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!awaitingEmail) return;
+    setIsResending(true);
+    setResendStatus(null);
+    setErrorMessage(null);
+
+    const res = await resendConfirmation(awaitingEmail);
+    setIsResending(false);
+
+    if (res.success) {
+      setResendStatus('Verification email resent! Please check your inbox.');
+    } else {
+      setErrorMessage(res.error || 'Failed to resend verification email. Please try again in a few moments.');
     }
   };
 
@@ -116,61 +155,67 @@ export const AuthModal: React.FC = () => {
         {/* Modal Header */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-agri-600 text-white flex items-center justify-center shadow-soft">
-            <ShieldCheck className="w-5 h-5" />
+            {mode === 'verify-email' ? <MailCheck className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
           </div>
           <div>
             <h3 className="font-display font-extrabold text-lg text-moss-900 leading-tight">
-              Farmer Authentication
+              {mode === 'verify-email' ? 'Verify Your Email' : 'Farmer Authentication'}
             </h3>
             <p className="text-xs text-moss-500">
-              {mode === 'signin' ? 'Sign in to access your registered farms & advisories' : 'Create a development account for Indradhanu'}
+              {mode === 'signin' && 'Sign in to access your registered farms & advisories'}
+              {mode === 'signup' && 'Create an account for localized climate intelligence'}
+              {mode === 'verify-email' && 'Email confirmation required before signing in'}
             </p>
           </div>
         </div>
 
         {/* Development Auth Notice Banner */}
-        <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <span className="font-bold">Development Mode Active:</span> Email & password authentication is enabled. SMS OTP carrier fees are avoided while preserving phone numbers for crop alerts.
+        {mode !== 'verify-email' && (
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="font-bold">Email Authentication Active:</span> Supports both instant sign-in and verified email confirmation flows. SMS carrier OTP paused.
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Supabase Unconfigured Warning */}
         {!isSupabaseConfigured && (
           <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <p>
-              <strong>Supabase Notice:</strong> Check that <code className="font-mono bg-amber-100 px-1 rounded">VITE_SUPABASE_URL</code> and <code className="font-mono bg-amber-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> are configured.
+              <strong>Supabase Notice:</strong> Configure <code className="font-mono bg-amber-100 px-1 rounded">VITE_SUPABASE_URL</code> and <code className="font-mono bg-amber-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code>.
             </p>
           </div>
         )}
 
-        {/* Tab Switcher */}
-        <div className="flex items-center bg-canvas-200 p-1 rounded-xl mb-4 text-xs font-bold text-moss-700">
-          <button
-            type="button"
-            onClick={() => { setMode('signin'); setErrorMessage(null); }}
-            className={`flex-1 py-1.5 rounded-lg transition-all ${
-              mode === 'signin'
-                ? 'bg-white text-agri-900 shadow-sm'
-                : 'text-moss-600 hover:text-moss-900'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('signup'); setErrorMessage(null); }}
-            className={`flex-1 py-1.5 rounded-lg transition-all ${
-              mode === 'signup'
-                ? 'bg-white text-agri-900 shadow-sm'
-                : 'text-moss-600 hover:text-moss-900'
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
+        {/* Tab Switcher (Visible in signin / signup modes) */}
+        {mode !== 'verify-email' && (
+          <div className="flex items-center bg-canvas-200 p-1 rounded-xl mb-4 text-xs font-bold text-moss-700">
+            <button
+              type="button"
+              onClick={() => { setMode('signin'); setErrorMessage(null); }}
+              className={`flex-1 py-1.5 rounded-lg transition-all ${
+                mode === 'signin'
+                  ? 'bg-white text-agri-900 shadow-sm'
+                  : 'text-moss-600 hover:text-moss-900'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('signup'); setErrorMessage(null); }}
+              className={`flex-1 py-1.5 rounded-lg transition-all ${
+                mode === 'signup'
+                  ? 'bg-white text-agri-900 shadow-sm'
+                  : 'text-moss-600 hover:text-moss-900'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMessage && (
@@ -188,7 +233,7 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Sign In Form */}
+        {/* Mode 1: Sign In Form */}
         {mode === 'signin' && (
           <form onSubmit={handleSignIn} className="space-y-3.5">
             <div>
@@ -246,7 +291,7 @@ export const AuthModal: React.FC = () => {
           </form>
         )}
 
-        {/* Create Account Form */}
+        {/* Mode 2: Create Account Form */}
         {mode === 'signup' && (
           <form onSubmit={handleSignUp} className="space-y-3.5">
             <div>
@@ -326,6 +371,59 @@ export const AuthModal: React.FC = () => {
               )}
             </button>
           </form>
+        )}
+
+        {/* Mode 3: Awaiting Email Verification (Outcome 2) */}
+        {mode === 'verify-email' && (
+          <div className="space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm text-amber-900">
+                <MailCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Verification Link Sent</span>
+              </div>
+              <p className="text-amber-900 leading-relaxed">
+                We have sent an activation link to <strong className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950">{awaitingEmail}</strong>.
+              </p>
+              <div className="bg-white/80 p-3 rounded-lg border border-amber-200/80 text-[11px] space-y-1 text-moss-700">
+                <p className="font-semibold text-moss-900">Next Steps:</p>
+                <p>1. Open your email inbox and click the verification link.</p>
+                <p>2. The link will confirm your address and redirect you back here.</p>
+                <p>3. Once confirmed, sign in with your email and password.</p>
+              </div>
+            </div>
+
+            {resendStatus && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-1.5 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{resendStatus}</span>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail(awaitingEmail);
+                  setMode('signin');
+                  setErrorMessage(null);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-agri-700 hover:bg-agri-800 text-white font-bold text-sm shadow-soft transition-all active:scale-98"
+              >
+                <span>Proceed to Sign In</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={isResending}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-moss-700 hover:bg-canvas-200 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
+                <span>{isResending ? 'Sending...' : 'Resend Verification Email'}</span>
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

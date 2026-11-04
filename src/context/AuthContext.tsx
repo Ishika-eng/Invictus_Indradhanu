@@ -5,7 +5,8 @@ import {
   verifyPhoneOtp, 
   signOutUser,
   signInWithEmail,
-  signUpWithEmail 
+  signUpWithEmail,
+  resendVerificationEmail
 } from '../services/supabase';
 import {
   fetchMyAuthState,
@@ -26,8 +27,17 @@ interface AuthContextType {
   isRegistered: boolean;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
+  confirmationNotice: string | null;
+  setConfirmationNotice: (notice: string | null) => void;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUpWithEmail: (email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  signUpWithEmail: (email: string, password: string, phone?: string) => Promise<{
+    success: boolean;
+    session?: any;
+    needsEmailConfirmation?: boolean;
+    error?: string;
+    message?: string;
+  }>;
+  resendConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -47,6 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [confirmationNotice, setConfirmationNotice] = useState<string | null>(null);
 
   // Sync Supabase Auth session on mount and listen to changes
   useEffect(() => {
@@ -54,10 +65,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     async function initAuth() {
       try {
+        // Handle PKCE auth code in URL query string if redirected: ?code=...
+        if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+            if (data?.session && mounted) {
+              setSession(data.session);
+              setUser(data.session.user);
+              setConfirmationNotice('Email confirmed successfully! Your farm session is active.');
+              await loadBackendProfile(data.session.access_token);
+              window.history.replaceState({}, document.title, window.location.pathname);
+              return;
+            }
+          } catch (codeErr) {
+            console.warn('PKCE auth code exchange error:', codeErr);
+          }
+        }
+
+        // Check if redirected via implicit token hash (#access_token=...&type=signup)
+        const hasAuthHash = typeof window !== 'undefined' && (
+          window.location.hash.includes('access_token=') ||
+          window.location.hash.includes('type=signup') ||
+          window.location.hash.includes('type=recovery')
+        );
+
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (mounted && initialSession) {
           setSession(initialSession);
           setUser(initialSession.user);
+          if (hasAuthHash) {
+            setConfirmationNotice('Email verified successfully! Welcome to Indradhanu.');
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
           await loadBackendProfile(initialSession.access_token);
         }
       } catch (err) {
@@ -69,12 +108,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
       setSession(currentSession);
       setUser(currentSession?.user || null);
 
-      if (currentSession?.access_token) {
+      if (event === 'SIGNED_IN' && currentSession?.access_token) {
+        if (typeof window !== 'undefined' && (window.location.hash.includes('type=signup') || window.location.search.includes('code='))) {
+          setConfirmationNotice('Email verified successfully! Welcome to Indradhanu.');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        await loadBackendProfile(currentSession.access_token);
+      } else if (currentSession?.access_token) {
         await loadBackendProfile(currentSession.access_token);
       } else {
         setFarmer(null);
@@ -132,7 +177,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     email: string,
     password: string,
     phone?: string
-  ): Promise<{ success: boolean; error?: string; message?: string }> => {
+  ): Promise<{
+    success: boolean;
+    session?: any;
+    needsEmailConfirmation?: boolean;
+    error?: string;
+    message?: string;
+  }> => {
     const { session: registeredSession, error } = await signUpWithEmail(
       email,
       password,
@@ -141,16 +192,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (error) {
       return { success: false, error: error.message };
     }
+
+    // Outcome 1: Session is returned immediately (email confirmation disabled or already confirmed)
     if (registeredSession) {
       setSession(registeredSession);
       setUser(registeredSession.user);
       await loadBackendProfile(registeredSession.access_token);
-      return { success: true };
+      return {
+        success: true,
+        session: registeredSession,
+        needsEmailConfirmation: false,
+        message: 'Account created and authenticated successfully!',
+      };
     }
+
+    // Outcome 2: User created without session (email confirmation required)
     return {
       success: true,
-      message: 'Account created! If email confirmation is enabled on Supabase, please verify your email address.',
+      session: null,
+      needsEmailConfirmation: true,
+      message: `Verification email sent! Please check ${email} and confirm your address before signing in.`,
     };
+  };
+
+  const resendConfirmation = async (
+    email: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await resendVerificationEmail(email);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
   };
 
   const sendOtp = async (phone: string): Promise<{ success: boolean; error?: string }> => {
@@ -188,6 +260,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!session?.access_token) {
       return { success: false, error: 'Please sign in first before registering.' };
     }
+    // Idempotency check: if farmer profile is already confirmed in context, avoid redundant network calls
+    if (isRegistered && farmer) {
+      return { success: true };
+    }
+
     try {
       const registered = await registerFarmerProfile(payload, session.access_token);
       setFarmer(registered);
@@ -199,6 +276,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return { success: true };
     } catch (err: any) {
+      // If registration failed because account is already registered (network retry scenario),
+      // recover gracefully by synchronizing profile from backend
+      if (err.message && (err.message.includes('already registered') || err.message.includes('409'))) {
+        await loadBackendProfile(session.access_token);
+        return { success: true };
+      }
       return { success: false, error: err.message || 'Registration failed' };
     }
   };
@@ -246,8 +329,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isRegistered,
         authModalOpen,
         setAuthModalOpen,
+        confirmationNotice,
+        setConfirmationNotice,
         signInWithEmail: loginWithEmail,
         signUpWithEmail: registerWithEmail,
+        resendConfirmation,
         sendOtp,
         verifyOtp,
         logout,

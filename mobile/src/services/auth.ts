@@ -45,7 +45,7 @@ export const AuthService = {
     email: string,
     password: string,
     phone?: string
-  ): Promise<{ success: boolean; session?: any; error?: string; message?: string }> {
+  ): Promise<{ success: boolean; session?: any; needsEmailConfirmation?: boolean; error?: string; message?: string }> {
     try {
       const formattedPhone = phone?.trim()
         ? (phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim().replace(/\D/g, '')}`)
@@ -65,15 +65,35 @@ export const AuthService = {
 
       if (data.session) {
         await StorageService.saveToken(data.session.access_token);
-        return { success: true, session: data.session };
+        return { success: true, session: data.session, needsEmailConfirmation: false };
       }
 
       return {
         success: true,
-        message: 'Account created! If email confirmation is enabled, please verify your email address.',
+        session: null,
+        needsEmailConfirmation: true,
+        message: 'Account created! Please check your email inbox to verify your email address before signing in.',
       };
     } catch (err: any) {
       return { success: false, error: err.message || 'Account creation failed' };
+    }
+  },
+
+  /**
+   * Resend confirmation email for unverified farmer accounts
+   */
+  async resendVerificationEmail(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase(),
+      });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to resend verification email' };
     }
   },
 

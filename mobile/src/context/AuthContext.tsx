@@ -37,7 +37,14 @@ interface AuthContextType {
   activeFarm: Farm | null;
   setActiveFarm: (farm: Farm) => void;
   signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string; isNewUser?: boolean }>;
-  signUpWithEmail: (email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  signUpWithEmail: (email: string, password: string, phone?: string) => Promise<{
+    success: boolean;
+    session?: any;
+    needsEmailConfirmation?: boolean;
+    error?: string;
+    message?: string;
+  }>;
+  resendConfirmation: (email: string) => Promise<{ success: boolean; error?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string; isNewUser?: boolean }>;
   registerProfile: (data: {
@@ -64,6 +71,7 @@ const AuthContext = createContext<AuthContextType>({
   setActiveFarm: () => {},
   signInWithEmail: async () => ({ success: false }),
   signUpWithEmail: async () => ({ success: false }),
+  resendConfirmation: async () => ({ success: false }),
   sendOtp: async () => ({ success: false }),
   verifyOtp: async () => ({ success: false }),
   registerProfile: async () => ({ success: false }),
@@ -158,9 +166,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserEmail(email);
       setUserPhone(phone || null);
       setIsAuthenticated(true);
-      return { success: true, isNewUser: true };
+      return { success: true, session: res.session, needsEmailConfirmation: false, isNewUser: true };
     }
-    return { success: true, message: res.message || 'Account created successfully!' };
+    return {
+      success: true,
+      session: null,
+      needsEmailConfirmation: true,
+      message: res.message || 'Account created! Please check your email inbox to verify your address before signing in.',
+    };
+  };
+
+  const resendConfirmation = async (email: string) => {
+    return await AuthService.resendVerificationEmail(email);
   };
 
   const sendOtp = async (phone: string) => {
@@ -201,6 +218,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone_number?: string;
     email?: string;
   }) => {
+    // Idempotency guard: If farmerProfile is already set, return success
+    if (farmerProfile) {
+      return { success: true };
+    }
     const res = await ApiService.registerFarmer({
       ...data,
       phone_number: data.phone_number || userPhone || undefined,
@@ -208,6 +229,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (res.data) {
       setFarmerProfile(res.data);
+      await refreshData();
+      return { success: true };
+    }
+    // Idempotent recovery if backend reports already registered on retry
+    if (res.error && (res.error.includes('already registered') || res.error.includes('409'))) {
       await refreshData();
       return { success: true };
     }
@@ -237,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveFarm,
         signInWithEmail,
         signUpWithEmail,
+        resendConfirmation,
         sendOtp,
         verifyOtp,
         registerProfile,

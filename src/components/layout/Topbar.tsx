@@ -12,7 +12,8 @@ import {
   Phone,
   UserCheck,
   LogOut,
-  LogIn
+  LogIn,
+  CheckCircle2
 } from 'lucide-react';
 import { useAdvisory, ActiveTab } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
@@ -28,7 +29,7 @@ export const Topbar: React.FC = () => {
     togglePresentationMode
   } = useAdvisory();
 
-  const { user, farmer, isRegistered, logout, setAuthModalOpen } = useAuth();
+  const { user, farmer, isRegistered, logout, setAuthModalOpen, confirmationNotice, setConfirmationNotice } = useAuth();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
@@ -61,8 +62,23 @@ export const Topbar: React.FC = () => {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-canvas-300/80 sticky top-0 z-30 px-4 lg:px-8 py-3 transition-all">
-      <div className="flex items-center justify-between">
+    <header className="bg-white/95 backdrop-blur-md border-b border-canvas-300/80 sticky top-0 z-30 transition-all">
+      {confirmationNotice && (
+        <div className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 flex items-center justify-between animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-200" />
+            <span>{confirmationNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmationNotice(null)}
+            className="p-1 hover:bg-emerald-700 rounded text-emerald-200 hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+      <div className="px-4 lg:px-8 py-3 flex items-center justify-between">
         
         {/* Left: Mobile Brand & Breadcrumbs */}
         <div className="flex items-center gap-3">
