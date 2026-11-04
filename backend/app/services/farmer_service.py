@@ -43,6 +43,15 @@ class FarmerService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_by_email(db: AsyncSession, email: str) -> Optional[Farmer]:
+        result = await db.execute(
+            select(Farmer)
+            .options(selectinload(Farmer.farms))
+            .where(Farmer.email == email)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def get_by_supabase_id(
         db: AsyncSession, supabase_user_id: str
     ) -> Optional[Farmer]:
@@ -81,17 +90,20 @@ class FarmerService:
                 f"Account is already registered as farmer '{existing_by_sub.full_name}'"
             )
 
-        # Phone priority: verified phone from Supabase JWT auth token, otherwise request fallback
-        phone = supabase_user.phone
+        # Phone priority: verified phone from Supabase JWT auth token, otherwise registration payload
+        phone = supabase_user.phone or (data.phone_number.strip() if getattr(data, "phone_number", None) else None)
         if not phone:
             raise DuplicateEntityException(
-                "A verified phone number is required in authentication token to register"
+                "A contact phone number is required to register your profile for advisory delivery."
             )
 
         # Format phone consistently
         phone = phone.strip()
         if not phone.startswith("+"):
             phone = f"+{phone}"
+
+        # Email priority: from Supabase auth token, or from registration request
+        email = supabase_user.email or (data.email.strip() if getattr(data, "email", None) else None)
 
         # Check if phone already registered by another account
         existing_phone = await FarmerService.get_by_phone(db, phone)
@@ -102,6 +114,8 @@ class FarmerService:
                 )
             # Re-link legacy or unlinked phone to this Supabase user
             existing_phone.supabase_user_id = supabase_user.user_id
+            if email:
+                existing_phone.email = email
             existing_phone.full_name = data.full_name
             existing_phone.preferred_language = data.preferred_language
             existing_phone.village = data.village
@@ -117,6 +131,7 @@ class FarmerService:
             supabase_user_id=supabase_user.user_id,
             full_name=data.full_name,
             phone_number=phone,
+            email=email,
             preferred_language=data.preferred_language,
             village=data.village,
             district=data.district,

@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase, sendPhoneOtp, verifyPhoneOtp, signOutUser } from '../services/supabase';
+import { 
+  supabase, 
+  sendPhoneOtp, 
+  verifyPhoneOtp, 
+  signOutUser,
+  signInWithEmail,
+  signUpWithEmail 
+} from '../services/supabase';
 import {
   fetchMyAuthState,
   registerFarmerProfile,
@@ -19,6 +26,8 @@ interface AuthContextType {
   isRegistered: boolean;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
+  signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -105,6 +114,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
+  const loginWithEmail = async (
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const { session: loggedSession, error } = await signInWithEmail(email, password);
+    if (error || !loggedSession) {
+      return { success: false, error: error?.message || 'Login failed. Please verify credentials.' };
+    }
+    setSession(loggedSession);
+    setUser(loggedSession.user);
+    await loadBackendProfile(loggedSession.access_token);
+    return { success: true };
+  };
+
+  const registerWithEmail = async (
+    email: string,
+    password: string,
+    phone?: string
+  ): Promise<{ success: boolean; error?: string; message?: string }> => {
+    const { session: registeredSession, error } = await signUpWithEmail(
+      email,
+      password,
+      phone
+    );
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    if (registeredSession) {
+      setSession(registeredSession);
+      setUser(registeredSession.user);
+      await loadBackendProfile(registeredSession.access_token);
+      return { success: true };
+    }
+    return {
+      success: true,
+      message: 'Account created! If email confirmation is enabled on Supabase, please verify your email address.',
+    };
+  };
+
   const sendOtp = async (phone: string): Promise<{ success: boolean; error?: string }> => {
     const { error } = await sendPhoneOtp(phone);
     if (error) {
@@ -138,7 +186,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     payload: FarmerRegistrationPayload
   ): Promise<{ success: boolean; error?: string }> => {
     if (!session?.access_token) {
-      return { success: false, error: 'Please log in with mobile OTP first before registering.' };
+      return { success: false, error: 'Please sign in first before registering.' };
     }
     try {
       const registered = await registerFarmerProfile(payload, session.access_token);
@@ -198,6 +246,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isRegistered,
         authModalOpen,
         setAuthModalOpen,
+        signInWithEmail: loginWithEmail,
+        signUpWithEmail: registerWithEmail,
         sendOtp,
         verifyOtp,
         logout,

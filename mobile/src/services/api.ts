@@ -56,10 +56,21 @@ export const ApiService = {
     district: string;
     state?: string;
     preferred_language: string;
+    phone_number?: string;
+    email?: string;
   }): Promise<ApiResponse<any>> {
-    return request('/farmers', {
+    return request('/auth/register-farmer', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        country: 'India',
+        farm_name: 'Main Farm Plot',
+        farm_acreage: 2.5,
+        soil_type: 'Black Cotton Soil',
+        irrigation_source: 'Borewell / Drip',
+        latitude: 18.5204,
+        longitude: 73.8567,
+      }),
     });
   },
 

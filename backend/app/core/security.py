@@ -74,7 +74,7 @@ def verify_supabase_jwt(token: str) -> SupabaseUser:
         logger.warning("Supabase JWT has expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired. Please verify your phone number again.",
+            detail="Authentication token has expired. Please log in again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except jwt.InvalidTokenError as e:

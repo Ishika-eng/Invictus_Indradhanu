@@ -55,8 +55,9 @@ export const Step1FarmerProfile: React.FC = () => {
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [gpsCaptured, setGpsCaptured] = useState<{ lat: number; lng: number } | null>(null);
 
-  // New Farmer Registration Form state (when phone is verified but profile not completed)
+  // New Farmer Registration Form state (when phone or email is authenticated but profile not completed)
   const [regFullName, setRegFullName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
   const [regLanguage, setRegLanguage] = useState<Language>('mr');
   const [regVillage, setRegVillage] = useState('Baramati');
   const [regDistrict, setRegDistrict] = useState('Pune');
@@ -79,6 +80,14 @@ export const Step1FarmerProfile: React.FC = () => {
   ];
 
   // Sync state if farmer is logged in and registered
+  useEffect(() => {
+    if (user?.phone) {
+      setRegPhone(user.phone);
+    } else if (user?.user_metadata?.phone_number) {
+      setRegPhone(user.user_metadata.phone_number);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (farmer) {
       setFarmerName(farmer.full_name);
@@ -135,8 +144,20 @@ export const Step1FarmerProfile: React.FC = () => {
     setIsSubmittingReg(true);
     setRegError(null);
 
+    const contactPhone = regPhone.trim() || user?.phone || user?.user_metadata?.phone_number;
+    if (!contactPhone) {
+      setRegError('Please provide a contact phone number for climate advisory dispatches.');
+      setIsSubmittingReg(false);
+      return;
+    }
+
+    const formattedPhone = contactPhone.startsWith('+')
+      ? contactPhone
+      : `+91${contactPhone.replace(/\D/g, '')}`;
+
     const result = await registerNewFarmer({
       full_name: regFullName,
+      phone_number: formattedPhone,
       preferred_language: regLanguage,
       village: regVillage,
       district: regDistrict,
@@ -181,12 +202,12 @@ export const Step1FarmerProfile: React.FC = () => {
           {user && isRegistered ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-agri-50 border border-agri-200 text-xs font-bold text-agri-800 shadow-sm">
               <CheckCircle2 className="w-4 h-4 text-agri-600 shrink-0" />
-              <span>Verified Account: {farmer?.phone_number}</span>
+              <span>Verified: {farmer?.full_name || farmer?.phone_number || farmer?.email}</span>
             </div>
           ) : user && !isRegistered ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900 shadow-sm">
               <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Phone Verified • Profile Incomplete</span>
+              <span>Authenticated • Complete Profile Setup</span>
             </div>
           ) : (
             <button
@@ -195,7 +216,7 @@ export const Step1FarmerProfile: React.FC = () => {
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold shadow-soft transition-all active:scale-95"
             >
               <Phone className="w-3.5 h-3.5" />
-              <span>Log In with Mobile OTP</span>
+              <span>Farmer Sign In</span>
             </button>
           )}
         </div>
@@ -213,7 +234,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 Complete Farmer & Farm Registration
               </h3>
               <p className="text-xs text-moss-500">
-                Your mobile <strong className="text-moss-900">{user.phone || 'number'}</strong> has been verified with Supabase Auth OTP. Save your profile to bind your field coordinates.
+                Your account <strong className="text-moss-900">{user.email || user.phone || 'active'}</strong> is authenticated with Supabase. Save your profile and farm plot to activate localized advisories.
               </p>
             </div>
           </div>
@@ -237,6 +258,20 @@ export const Step1FarmerProfile: React.FC = () => {
                   placeholder="e.g. Ramesh Patil"
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-moss-700 block mb-1">
+                  Contact Mobile Number *
+                </label>
+                <input
+                  type="tel"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600 font-mono"
                 />
               </div>
 

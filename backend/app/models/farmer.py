@@ -22,6 +22,9 @@ class Farmer(Base, TimestampMixin):
     supabase_user_id: Mapped[Optional[str]] = mapped_column(
         String(64), unique=True, index=True, nullable=True
     )
+    email: Mapped[Optional[str]] = mapped_column(
+        String(120), index=True, nullable=True
+    )
     full_name: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     phone_number: Mapped[str] = mapped_column(
         String(24), unique=True, index=True, nullable=False

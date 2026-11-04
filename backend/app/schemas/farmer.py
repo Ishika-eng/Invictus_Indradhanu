@@ -7,6 +7,7 @@ from app.schemas.farm import FarmResponse
 class FarmerBase(BaseModel):
     full_name: str = Field(..., json_schema_extra={"example": "Ramesh Patil"})
     phone_number: str = Field(..., json_schema_extra={"example": "+919876543210"})
+    email: Optional[str] = Field(None, json_schema_extra={"example": "farmer@example.com"})
     preferred_language: str = Field("mr", json_schema_extra={"example": "mr"})
     village: str = Field(..., json_schema_extra={"example": "Baramati"})
     district: str = Field(..., json_schema_extra={"example": "Pune"})
@@ -24,6 +25,7 @@ class FarmerCreate(FarmerBase):
 class FarmerUpdate(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
+    email: Optional[str] = None
     preferred_language: Optional[str] = None
     village: Optional[str] = None
     district: Optional[str] = None
@@ -46,8 +48,10 @@ class FarmerDetailResponse(FarmerResponse):
 
 
 class FarmerRegistrationRequest(BaseModel):
-    """Payload submitted right after phone OTP verification to register profile & initial farm."""
+    """Payload submitted right after auth verification to register profile & initial farm."""
     full_name: str = Field(..., min_length=2, max_length=120, json_schema_extra={"example": "Ramesh Patil"})
+    phone_number: Optional[str] = Field(None, json_schema_extra={"example": "+919876543210"})
+    email: Optional[str] = Field(None, json_schema_extra={"example": "farmer@example.com"})
     preferred_language: str = Field("mr", json_schema_extra={"example": "mr"})
     village: str = Field(..., min_length=2, max_length=100, json_schema_extra={"example": "Baramati"})
     district: str = Field(..., min_length=2, max_length=100, json_schema_extra={"example": "Pune"})
@@ -69,5 +73,6 @@ class AuthMeResponse(BaseModel):
     authenticated: bool
     supabase_user_id: str
     phone_number: Optional[str] = None
+    email: Optional[str] = None
     is_registered: bool
     farmer: Optional[FarmerDetailResponse] = None

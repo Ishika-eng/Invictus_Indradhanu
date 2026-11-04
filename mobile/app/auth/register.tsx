@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
-import { UserCheck, MapPin, Globe } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { UserCheck, MapPin, Globe, Phone } from 'lucide-react-native';
 import { COLORS } from '../../src/constants/colors';
 import { useAuth } from '../../src/context/AuthContext';
 import { useLanguage } from '../../src/context/LanguageContext';
@@ -17,10 +17,12 @@ const LANG_OPTIONS: { code: SupportedLanguage; label: string }[] = [
 
 export default function RegisterProfileScreen() {
   const router = useRouter();
-  const { registerProfile } = useAuth();
+  const params = useLocalSearchParams<{ phone?: string; email?: string }>();
+  const { registerProfile, userPhone } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
   const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(params.phone || userPhone || '');
   const [village, setVillage] = useState('');
   const [district, setDistrict] = useState('');
   const [state, setState] = useState('Maharashtra');
@@ -32,6 +34,11 @@ export default function RegisterProfileScreen() {
       setErrorMsg(t('enterFullName') || 'Please enter your full name');
       return;
     }
+    const contactPhone = phoneNumber.trim() || userPhone || params.phone;
+    if (!contactPhone || contactPhone.replace(/\D/g, '').length < 10) {
+      setErrorMsg('Please enter a valid 10-digit mobile number for advisories');
+      return;
+    }
     if (!village.trim()) {
       setErrorMsg(t('enterVillage') || 'Please enter your village name');
       return;
@@ -41,12 +48,15 @@ export default function RegisterProfileScreen() {
       return;
     }
 
+    const formattedPhone = contactPhone.startsWith('+') ? contactPhone : `+91${contactPhone.replace(/\D/g, '')}`;
+
     setErrorMsg('');
     setLoading(true);
 
     try {
       const res = await registerProfile({
         full_name: fullName.trim(),
+        phone_number: formattedPhone,
         village: village.trim(),
         district: district.trim(),
         state: state.trim(),
@@ -89,6 +99,16 @@ export default function RegisterProfileScreen() {
             placeholderTextColor={COLORS.textMuted}
             value={fullName}
             onChangeText={setFullName}
+          />
+
+          <Text style={styles.label}>Mobile Number (मोबाईल क्रमांक) *</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="phone-pad"
+            placeholder="9876543210"
+            placeholderTextColor={COLORS.textMuted}
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
           />
 
           <Text style={styles.label}>{t('village') || 'Village (गाव)'} *</Text>

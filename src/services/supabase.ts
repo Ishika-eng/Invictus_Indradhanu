@@ -18,7 +18,61 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
 });
 
 /**
+ * Sign in using email and password (Supabase Auth).
+ */
+export async function signInWithEmail(
+  email: string,
+  password: string
+): Promise<{ session: any; user: any; error: Error | null }> {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    return {
+      session: data?.session || null,
+      user: data?.user || null,
+      error,
+    };
+  } catch (err: any) {
+    return { session: null, user: null, error: err };
+  }
+}
+
+/**
+ * Register a new user using email and password.
+ * Attaches phone number into user_metadata for agricultural dispatch.
+ */
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  phone?: string
+): Promise<{ session: any; user: any; error: Error | null }> {
+  try {
+    const formattedPhone = phone?.trim()
+      ? (phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim().replace(/^0+/, '')}`)
+      : undefined;
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        data: formattedPhone ? { phone_number: formattedPhone } : {},
+      },
+    });
+    return {
+      session: data?.session || null,
+      user: data?.user || null,
+      error,
+    };
+  } catch (err: any) {
+    return { session: null, user: null, error: err };
+  }
+}
+
+/**
  * Request a 6-digit SMS OTP from Supabase Auth for an Indian or international mobile number.
+ * Kept modular for when carrier OTP provider is configured.
  */
 export async function sendPhoneOtp(phone: string): Promise<{ error: Error | null }> {
   try {

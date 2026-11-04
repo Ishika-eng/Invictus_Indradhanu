@@ -2,6 +2,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 export interface FarmerRegistrationPayload {
   full_name: string;
+  phone_number?: string;
+  email?: string;
   preferred_language: string;
   village: string;
   district: string;
@@ -45,6 +47,7 @@ export interface BackendFarmer {
   supabase_user_id?: string;
   full_name: string;
   phone_number: string;
+  email?: string;
   preferred_language: string;
   village: string;
   district: string;
@@ -62,6 +65,7 @@ export interface AuthMeResponse {
   authenticated: boolean;
   supabase_user_id: string;
   phone_number?: string;
+  email?: string;
   is_registered: boolean;
   farmer?: BackendFarmer | null;
 }

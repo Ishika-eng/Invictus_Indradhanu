@@ -18,6 +18,66 @@ export const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_K
 
 export const AuthService = {
   /**
+   * Sign in using email and password
+   */
+  async signInWithEmail(email: string, password: string): Promise<{ success: boolean; session?: any; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (error || !data.session) {
+        return { success: false, error: error?.message || 'Invalid email or password' };
+      }
+
+      await StorageService.saveToken(data.session.access_token);
+      return { success: true, session: data.session };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Email login failed' };
+    }
+  },
+
+  /**
+   * Sign up using email and password with optional phone number in metadata
+   */
+  async signUpWithEmail(
+    email: string,
+    password: string,
+    phone?: string
+  ): Promise<{ success: boolean; session?: any; error?: string; message?: string }> {
+    try {
+      const formattedPhone = phone?.trim()
+        ? (phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim().replace(/\D/g, '')}`)
+        : undefined;
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: formattedPhone ? { phone_number: formattedPhone } : {},
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.session) {
+        await StorageService.saveToken(data.session.access_token);
+        return { success: true, session: data.session };
+      }
+
+      return {
+        success: true,
+        message: 'Account created! If email confirmation is enabled, please verify your email address.',
+      };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Account creation failed' };
+    }
+  },
+
+  /**
    * Request OTP for a phone number in international format (+91...)
    */
   async signInWithOtp(phone: string): Promise<{ success: boolean; error?: string }> {

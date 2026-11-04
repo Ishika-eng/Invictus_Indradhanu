@@ -7,15 +7,18 @@ from httpx import AsyncClient
 from app.core.config import settings
 
 
-def create_test_token(user_id: str, phone: str = "+919876543210", expired: bool = False) -> str:
+def create_test_token(user_id: str, phone: str = "+919876543210", email: str = None, expired: bool = False) -> str:
     exp = time.time() - 3600 if expired else time.time() + 3600
     payload = {
         "sub": user_id,
-        "phone": phone,
         "role": "authenticated",
         "aud": "authenticated",
         "exp": exp,
     }
+    if phone is not None:
+        payload["phone"] = phone
+    if email is not None:
+        payload["email"] = email
     return jwt.encode(payload, settings.SUPABASE_JWT_SECRET, algorithm="HS256")
 
 
@@ -219,4 +222,68 @@ async def test_farm_multi_plot_and_ownership_enforcement(client: AsyncClient):
     )
     assert res_legit_update.status_code == 200
     assert res_legit_update.json()["name"] == "Alpha Plot 1 (Updated)"
+
+
+@pytest.mark.asyncio
+async def test_farmer_registration_and_state_with_email_auth(client: AsyncClient):
+    """Tests email-based Supabase Auth flow: token contains email without phone claim."""
+    user_id = str(uuid.uuid4())
+    test_email = f"kisan_{user_id[:8]}@example.com"
+    # Token has email and NO phone claim (simulating Supabase email sign up)
+    token = create_test_token(user_id, phone=None, email=test_email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Unregistered state
+    res_me = await client.get("/api/v1/auth/me", headers=headers)
+    assert res_me.status_code == 200
+    data_me = res_me.json()
+    assert data_me["authenticated"] is True
+    assert data_me["is_registered"] is False
+    assert data_me["email"] == test_email
+    assert data_me["phone_number"] is None
+
+    # 2. Register farmer providing phone_number in the request body
+    reg_payload = {
+        "full_name": "Ramesh Kisan",
+        "phone_number": "+919811223344",
+        "preferred_language": "hi",
+        "village": "Shirdi",
+        "district": "Ahmednagar",
+        "state": "Maharashtra",
+        "country": "India",
+        "farm_name": "Sai Organic Farm",
+        "farm_acreage": 3.0,
+        "soil_type": "Loam",
+        "irrigation_source": "Well",
+        "latitude": 19.7667,
+        "longitude": 74.4764,
+        "elevation_meters": 510.0,
+    }
+    res_reg = await client.post(
+        "/api/v1/auth/register-farmer",
+        json=reg_payload,
+        headers=headers,
+    )
+    assert res_reg.status_code == 201
+    farmer_data = res_reg.json()
+    assert farmer_data["full_name"] == "Ramesh Kisan"
+    assert farmer_data["email"] == test_email
+    assert farmer_data["phone_number"] == "+919811223344"
+    assert len(farmer_data["farms"]) == 1
+
+    # 3. Post-registration state in /auth/me
+    res_me_after = await client.get("/api/v1/auth/me", headers=headers)
+    assert res_me_after.status_code == 200
+    data_after = res_me_after.json()
+    assert data_after["is_registered"] is True
+    assert data_after["email"] == test_email
+    assert data_after["phone_number"] == "+919811223344"
+    assert data_after["farmer"]["email"] == test_email
+
+    # 4. Profile retrieval via /farmers/me
+    res_profile = await client.get("/api/v1/farmers/me", headers=headers)
+    assert res_profile.status_code == 200
+    assert res_profile.json()["email"] == test_email
+    assert res_profile.json()["phone_number"] == "+919811223344"
+
 

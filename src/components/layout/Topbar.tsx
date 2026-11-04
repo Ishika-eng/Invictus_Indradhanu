@@ -11,7 +11,8 @@ import {
   Minimize2,
   Phone,
   UserCheck,
-  LogOut
+  LogOut,
+  LogIn
 } from 'lucide-react';
 import { useAdvisory, ActiveTab } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
@@ -102,7 +103,7 @@ export const Topbar: React.FC = () => {
             <div className="flex items-center gap-1.5 bg-agri-50 border border-agri-200 px-2.5 py-1.5 rounded-xl shadow-xs">
               <UserCheck className="w-3.5 h-3.5 text-agri-700 shrink-0" />
               <span className="text-xs font-bold text-agri-900 hidden sm:inline max-w-[120px] truncate">
-                {farmer ? farmer.full_name : (user.phone || 'Farmer')}
+                {farmer ? farmer.full_name : (user.email || user.phone || 'Farmer')}
               </span>
               <button
                 type="button"
@@ -119,9 +120,9 @@ export const Topbar: React.FC = () => {
               onClick={() => setAuthModalOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-agri-800 bg-canvas-100 hover:bg-canvas-200 border border-canvas-300 shadow-sm transition-all"
             >
-              <Phone className="w-3.5 h-3.5 text-agri-600" />
-              <span className="hidden sm:inline">Farmer Login</span>
-              <span className="sm:hidden">Login</span>
+              <LogIn className="w-3.5 h-3.5 text-agri-600" />
+              <span className="hidden sm:inline">Farmer Sign In</span>
+              <span className="sm:hidden">Sign In</span>
             </button>
           )}
 

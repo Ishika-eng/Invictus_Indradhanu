@@ -31,10 +31,13 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   userPhone: string | null;
+  userEmail: string | null;
   farmerProfile: FarmerProfile | null;
   farms: Farm[];
   activeFarm: Farm | null;
   setActiveFarm: (farm: Farm) => void;
+  signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string; isNewUser?: boolean }>;
+  signUpWithEmail: (email: string, password: string, phone?: string) => Promise<{ success: boolean; error?: string; message?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string; isNewUser?: boolean }>;
   registerProfile: (data: {
@@ -43,6 +46,8 @@ interface AuthContextType {
     district: string;
     state?: string;
     preferred_language: string;
+    phone_number?: string;
+    email?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   refreshData: () => Promise<void>;
   logout: () => Promise<void>;
@@ -52,10 +57,13 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   userPhone: null,
+  userEmail: null,
   farmerProfile: null,
   farms: [],
   activeFarm: null,
   setActiveFarm: () => {},
+  signInWithEmail: async () => ({ success: false }),
+  signUpWithEmail: async () => ({ success: false }),
   sendOtp: async () => ({ success: false }),
   verifyOtp: async () => ({ success: false }),
   registerProfile: async () => ({ success: false }),
@@ -67,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userPhone, setUserPhone] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [farmerProfile, setFarmerProfile] = useState<FarmerProfile | null>(null);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [activeFarm, setActiveFarmState] = useState<Farm | null>(null);
@@ -101,7 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const session = await AuthService.getSession();
         if (session) {
-          setUserPhone(session.user?.phone || null);
+          setUserPhone(session.user?.phone || session.user?.user_metadata?.phone_number || null);
+          setUserEmail(session.user?.email || null);
           await refreshData();
         }
       } catch (e) {
@@ -117,6 +127,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setActiveFarm = async (farm: Farm) => {
     setActiveFarmState(farm);
     await StorageService.saveActiveFarmId(farm.id);
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    const res = await AuthService.signInWithEmail(email, password);
+    if (!res.success) {
+      return { success: false, error: res.error };
+    }
+
+    setUserEmail(email);
+    setUserPhone(res.session?.user?.phone || res.session?.user?.user_metadata?.phone_number || null);
+    setIsAuthenticated(true);
+
+    const profileRes = await ApiService.getFarmerProfile();
+    if (profileRes.data) {
+      setFarmerProfile(profileRes.data);
+      await refreshData();
+      return { success: true, isNewUser: false };
+    } else {
+      return { success: true, isNewUser: true };
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string, phone?: string) => {
+    const res = await AuthService.signUpWithEmail(email, password, phone);
+    if (!res.success) {
+      return { success: false, error: res.error };
+    }
+    if (res.session) {
+      setUserEmail(email);
+      setUserPhone(phone || null);
+      setIsAuthenticated(true);
+      return { success: true, isNewUser: true };
+    }
+    return { success: true, message: res.message || 'Account created successfully!' };
   };
 
   const sendOtp = async (phone: string) => {
@@ -154,8 +198,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     district: string;
     state?: string;
     preferred_language: string;
+    phone_number?: string;
+    email?: string;
   }) => {
-    const res = await ApiService.registerFarmer(data);
+    const res = await ApiService.registerFarmer({
+      ...data,
+      phone_number: data.phone_number || userPhone || undefined,
+      email: data.email || userEmail || undefined,
+    });
     if (res.data) {
       setFarmerProfile(res.data);
       await refreshData();
@@ -168,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await AuthService.signOut();
     setIsAuthenticated(false);
     setUserPhone(null);
+    setUserEmail(null);
     setFarmerProfile(null);
     setFarms([]);
     setActiveFarmState(null);
@@ -179,10 +230,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         isLoading,
         userPhone,
+        userEmail,
         farmerProfile,
         farms,
         activeFarm,
         setActiveFarm,
+        signInWithEmail,
+        signUpWithEmail,
         sendOtp,
         verifyOtp,
         registerProfile,

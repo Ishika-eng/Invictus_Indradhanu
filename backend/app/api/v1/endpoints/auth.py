@@ -23,7 +23,8 @@ async def get_my_auth_state(
     return AuthMeResponse(
         authenticated=True,
         supabase_user_id=user.user_id,
-        phone_number=user.phone,
+        phone_number=user.phone or (farmer.phone_number if farmer else None),
+        email=user.email or (farmer.email if farmer else None),
         is_registered=farmer is not None,
         farmer=farmer,
     )
