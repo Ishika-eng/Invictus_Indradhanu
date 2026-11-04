@@ -25,3 +25,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index(op.f('ix_farmers_email'), table_name='farmers')
     op.drop_column('farmers', 'email')
+
