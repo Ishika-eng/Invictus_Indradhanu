@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
   FarmerProfile, 
   CropType, 
@@ -201,21 +201,27 @@ interface AdvisoryContextType {
   setLatestBackendAdvisory: (adv: BackendAdvisory | null) => void;
   currentClimate: CurrentClimateData | null;
   setCurrentClimate: (data: CurrentClimateData | null) => void;
+  authenticatedFarmerId: string | null;
+  selectedFarmId: string | null;
 }
 
 const AdvisoryContext = createContext<AdvisoryContextType | undefined>(undefined);
 
 export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { selectedFarm, session } = useAuth();
+  const { selectedFarm, session, farmer } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('advisory-wizard');
   const [demoStep, setDemoStep] = useState<DemoStep>(1);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   
-  // Step 1 inputs - Default Language set to 'en' (English)
-  const [farmerName, setFarmerName] = useState('Ramesh Patil');
-  const [farmerPhone, setFarmerPhone] = useState('+91 98234 11209');
+  // Step 1 inputs - Default to authenticated profile if present
+  const [farmerName, setFarmerName] = useState<string>(farmer?.full_name || 'Ramesh Patil');
+  const [farmerPhone, setFarmerPhone] = useState<string>(farmer?.phone_number || '+91 98234 11209');
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>(PRESET_LOCATIONS[0]);
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>('en');
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>(
+    (farmer?.preferred_language && ['mr', 'hi', 'te', 'sw', 'en'].includes(farmer.preferred_language)
+      ? farmer.preferred_language
+      : 'en') as Language
+  );
   
   // Step 2 inputs
   const [selectedCrop, setSelectedCrop] = useState('Tomato');
@@ -247,6 +253,84 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [latestBackendAdvisory, setLatestBackendAdvisory] = useState<BackendAdvisory | null>(null);
   const [currentClimate, setCurrentClimate] = useState<CurrentClimateData | null>(null);
   const [metrics, setMetrics] = useState<MetricSummary>(INITIAL_METRICS);
+
+  // Synchronize authenticated farmer profile dynamically across the entire advisory workflow
+  useEffect(() => {
+    if (farmer) {
+      setFarmerName(farmer.full_name);
+      setFarmerPhone(farmer.phone_number);
+      if (farmer.preferred_language && ['mr', 'hi', 'te', 'sw', 'en'].includes(farmer.preferred_language)) {
+        setSelectedLanguage(farmer.preferred_language as Language);
+      }
+      const lat = selectedFarm?.latitude ?? 18.5204;
+      const lng = selectedFarm?.longitude ?? 73.8567;
+      const farmAcreage = selectedFarm?.acreage ?? acreage;
+
+      setSelectedFarmer({
+        id: farmer.id,
+        name: farmer.full_name,
+        phone: farmer.phone_number,
+        location: {
+          village: farmer.village || 'Field Plot',
+          district: farmer.district || farmer.state || 'Region',
+          state: farmer.state || 'State',
+          country: farmer.country || 'India',
+          coordinates: [lat, lng],
+          elevationMeters: 560,
+          microZoneName: `${farmer.village || 'Field'} Agro-Zone`,
+        },
+        preferredLanguage: (farmer.preferred_language as Language) || 'en',
+        landHoldingAcres: farmAcreage,
+        cropHistory: [selectedCrop],
+        activeCropId: selectedCrop,
+        trustScore: farmer.trust_score || 95,
+      });
+
+      if (selectedFarm) {
+        setAcreage(selectedFarm.acreage);
+        setSelectedLocation(prev => ({
+          ...prev,
+          city: farmer.village || selectedFarm.name || prev.city,
+          state: farmer.state || prev.state,
+          country: farmer.country || prev.country,
+        }));
+      }
+
+      setActiveAdvisory(prev => ({
+        ...prev,
+        farmerId: farmer.id,
+        farmerName: farmer.full_name,
+        translations: {
+          ...prev.translations,
+          en: {
+            ...prev.translations.en,
+            smsBody: prev.translations.en.smsBody.replace(/Ramesh(\s+ji)?/g, farmer.full_name),
+            voiceScript: prev.translations.en.voiceScript.replace(/Ramesh\s+Patil(\s+ji)?/g, farmer.full_name)
+          },
+          hi: {
+            ...prev.translations.hi,
+            smsBody: prev.translations.hi.smsBody.replace(/रमेश(\s+जी)?/g, `${farmer.full_name} जी`),
+            voiceScript: prev.translations.hi.voiceScript.replace(/रमेश\s+पाटिल(\s+जी)?/g, `${farmer.full_name} जी`)
+          },
+          mr: {
+            ...prev.translations.mr,
+            smsBody: prev.translations.mr.smsBody.replace(/रमेश(\s+जी)?/g, `${farmer.full_name} जी`),
+            voiceScript: prev.translations.mr.voiceScript.replace(/रमेश\s+पाटील(\s+साहेब)?/g, `${farmer.full_name} साहेब`)
+          },
+          te: {
+            ...prev.translations.te,
+            smsBody: prev.translations.te.smsBody.replace(/రమేష్(\s+గారు)?/g, `${farmer.full_name} గారు`),
+            voiceScript: prev.translations.te.voiceScript.replace(/రమేష్\s+పాటిల్(\s+గారు)?/g, `${farmer.full_name} గారు`)
+          },
+          sw: {
+            ...prev.translations.sw,
+            smsBody: prev.translations.sw.smsBody.replace(/Ramesh/g, farmer.full_name),
+            voiceScript: prev.translations.sw.voiceScript
+          }
+        }
+      }));
+    }
+  }, [farmer, selectedFarm]);
 
   const togglePresentationMode = () => {
     setIsPresentationMode(prev => !prev);
@@ -407,6 +491,8 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
       setLatestBackendAdvisory,
       currentClimate,
       setCurrentClimate,
+      authenticatedFarmerId: farmer?.id || null,
+      selectedFarmId: selectedFarm?.id || null,
     }}>
       {children}
     </AdvisoryContext.Provider>

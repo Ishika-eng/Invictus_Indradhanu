@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAdvisory } from '../../context/AdvisoryContext';
+import { useAuth } from '../../context/AuthContext';
 import { VoiceCallSimulator } from './VoiceCallSimulator';
 
 export const ChannelDeliveryPreview: React.FC = () => {
@@ -21,16 +22,25 @@ export const ChannelDeliveryPreview: React.FC = () => {
     activeAdvisory, 
     selectedLanguage, 
     selectedFarmer, 
+    farmerName,
+    farmerPhone,
     isSimulatingDispatch, 
     dispatchSuccess, 
     triggerLiveDispatch 
   } = useAdvisory();
+  const { farmer } = useAuth();
+
+  const recipientName = farmer?.full_name || farmerName || selectedFarmer.name;
+  const recipientPhone = farmer?.phone_number || farmerPhone || selectedFarmer.phone;
+  const activeLang = (farmer?.preferred_language && ['mr', 'hi', 'te', 'sw', 'en'].includes(farmer.preferred_language)
+    ? farmer.preferred_language
+    : selectedLanguage) as 'mr' | 'hi' | 'te' | 'sw' | 'en';
 
   const [activeChannelTab, setActiveChannelTab] = useState<'voice' | 'sms' | 'whatsapp'>('voice');
   const [copied, setCopied] = useState(false);
 
   // Active translation SMS text
-  const currentSmsBody = activeAdvisory.translations[selectedLanguage]?.smsBody || activeAdvisory.translations.en.smsBody;
+  const currentSmsBody = activeAdvisory.translations[activeLang]?.smsBody || activeAdvisory.translations[selectedLanguage]?.smsBody || activeAdvisory.translations.en.smsBody;
 
   const handleCopySms = () => {
     navigator.clipboard.writeText(currentSmsBody);
@@ -207,7 +217,7 @@ export const ChannelDeliveryPreview: React.FC = () => {
 
             {/* Carrier Gateway Meta Footer */}
             <div className="pt-3 border-t border-moss-800 flex items-center justify-between text-[10px] text-moss-400">
-              <span>Recipient: <strong className="text-white">{selectedFarmer.phone}</strong></span>
+              <span>Recipient: <strong className="text-white">{recipientPhone}</strong> ({recipientName})</span>
               <span className="text-agri-300 font-medium">Delivered via GSM SMPP</span>
             </div>
           </div>
@@ -255,7 +265,7 @@ export const ChannelDeliveryPreview: React.FC = () => {
                 </p>
                 <div className="p-2 rounded-lg bg-[#111b21] flex items-center gap-2 text-[11px]">
                   <PhoneCall className="w-3.5 h-3.5 text-[#00a884]" />
-                  <span>Voice Note: 42s in {selectedLanguage.toUpperCase()} attached</span>
+                  <span>Voice Note: 42s in {activeLang.toUpperCase()} attached</span>
                 </div>
               </div>
 

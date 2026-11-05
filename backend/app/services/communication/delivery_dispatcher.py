@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
+import re
 from typing import Any, Dict, List, Optional
 import uuid
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -43,6 +45,7 @@ class DeliveryDispatcher:
         channels: List[str],
         simulate: bool = False,
         custom_phone: Optional[str] = None,
+        current_farmer: Optional[Farmer] = None,
     ) -> DeliveryDispatchResponse:
         """Dispatches an advisory across selected channels with safety, idempotency, and audit logging."""
         # 1. Retrieve Advisory with Farmer and Crop context
@@ -59,7 +62,38 @@ class DeliveryDispatcher:
         if not farmer:
             raise EntityNotFoundException(f"Farmer record associated with advisory '{advisory_id}' not found")
 
-        target_phone = custom_phone or farmer.phone_number
+        # Ownership validation: The authenticated farmer must own this advisory
+        if current_farmer and str(advisory.farmer_id) != str(current_farmer.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: Advisory '{advisory_id}' does not belong to the authenticated farmer.",
+            )
+
+        # Resolve target phone: verify against registered farmer profile
+        target_phone = (custom_phone or farmer.phone_number or "").strip()
+        clean_digits = re.sub(r"\D", "", target_phone)
+
+        # Validate that recipient phone number is present and valid (10-15 digits per E.164)
+        if not target_phone or len(clean_digits) < 10 or len(clean_digits) > 15:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Recipient phone number '{target_phone}' is missing or invalid. A valid 10-15 digit phone number is required.",
+            )
+
+        # Prevent cross-farmer phone leaks: cannot dispatch to another registered farmer's phone
+        if custom_phone and custom_phone.strip() != farmer.phone_number:
+            other_farmer_res = await db.execute(
+                select(Farmer).where(
+                    Farmer.id != farmer.id,
+                    Farmer.phone_number.in_([custom_phone.strip(), f"+{clean_digits}", clean_digits]),
+                )
+            )
+            if other_farmer_res.scalars().first():
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Security violation: Cannot dispatch advisory to another registered farmer's phone number.",
+                )
+
         language = advisory.language or farmer.preferred_language or "en"
         crop_name = advisory.crop.name if advisory.crop else "Crop"
 

@@ -12,17 +12,25 @@ import {
   Globe2
 } from 'lucide-react';
 import { useAdvisory } from '../../context/AdvisoryContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const VoiceCallSimulator: React.FC = () => {
-  const { activeAdvisory, selectedLanguage, selectedFarmer } = useAdvisory();
+  const { activeAdvisory, selectedLanguage, selectedFarmer, farmerName, farmerPhone } = useAdvisory();
+  const { farmer } = useAuth();
   
+  const recipientName = farmer?.full_name || farmerName || selectedFarmer.name;
+  const recipientPhone = farmer?.phone_number || farmerPhone || selectedFarmer.phone;
+  const activeLang = (farmer?.preferred_language && ['mr', 'hi', 'te', 'sw', 'en'].includes(farmer.preferred_language)
+    ? farmer.preferred_language
+    : selectedLanguage) as 'mr' | 'hi' | 'te' | 'sw' | 'en';
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSec, setPlaybackSec] = useState(0);
   const totalDuration = activeAdvisory.channels.voice.callDurationSec || 42;
   const [playbackSpeed, setPlaybackSpeed] = useState<1 | 1.25>(1);
 
   // Active translation voice script
-  const activeScript = activeAdvisory.translations[selectedLanguage]?.voiceScript || activeAdvisory.translations.en.voiceScript;
+  const activeScript = activeAdvisory.translations[activeLang]?.voiceScript || activeAdvisory.translations[selectedLanguage]?.voiceScript || activeAdvisory.translations.en.voiceScript;
 
   useEffect(() => {
     let timer: any;
@@ -71,7 +79,7 @@ export const VoiceCallSimulator: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-moss-400 mt-0.5">
-              Dialing <strong className="text-canvas-200">{selectedFarmer.phone}</strong> ({selectedFarmer.name}) • Tone: {activeAdvisory.channels.voice.voiceTone}
+              Dialing <strong className="text-canvas-200">{recipientPhone}</strong> ({recipientName}) • Tone: {activeAdvisory.channels.voice.voiceTone}
             </p>
           </div>
         </div>

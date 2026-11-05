@@ -45,6 +45,7 @@ async def dispatch_advisory(
         channels=body.channels,
         simulate=body.simulate,
         custom_phone=body.custom_phone,
+        current_farmer=current_farmer,
     )
 
 

@@ -49,6 +49,7 @@ export const Step1FarmerProfile: React.FC = () => {
     setAuthModalOpen,
     detectBrowserGps,
     registerNewFarmer,
+    refreshProfile,
   } = useAuth();
 
   const [locationSearch, setLocationSearch] = useState('');
@@ -175,6 +176,11 @@ export const Step1FarmerProfile: React.FC = () => {
     setIsSubmittingReg(false);
     if (!result.success) {
       setRegError(result.error || 'Registration failed');
+    } else {
+      setFarmerName(regFullName);
+      setFarmerPhone(formattedPhone);
+      setSelectedLanguage(regLanguage);
+      await refreshProfile();
     }
   };
 

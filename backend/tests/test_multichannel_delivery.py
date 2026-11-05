@@ -325,3 +325,155 @@ async def test_api_delivery_dispatch_and_history(client: AsyncClient, db_session
         assert res_pref.status_code == 200
         assert res_pref.json()["preferred_channel"] == "VOICE_IVR"
 
+
+@pytest.mark.asyncio
+async def test_dispatch_ownership_check_prevents_cross_farmer_dispatch(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Dispatch endpoint must reject attempts to dispatch an advisory belonging to another farmer."""
+    await seed_crop_database(db_session)
+    
+    # Register Farmer 1 (Owner)
+    f1_data, f1_token = await register_test_farmer(
+        client, str(uuid.uuid4()), phone="+919811110001", lang="hi"
+    )
+    f1_id = uuid.UUID(f1_data["id"])
+    f1_farm_id = uuid.UUID(f1_data["farms"][0]["id"])
+
+    # Register Farmer 2 (Attacker)
+    f2_data, f2_token = await register_test_farmer(
+        client, str(uuid.uuid4()), phone="+919822220002", lang="te"
+    )
+
+    norm_meteo = OpenMeteoService._normalize_payload(MOCK_METEO, 18.82, 74.37)
+    with patch.object(OpenMeteoService, "fetch_weather", AsyncMock(return_value=norm_meteo)):
+        # Farmer 1 generates advisory
+        advisory = await AdvisoryGenerationService.generate_advisory(
+            db=db_session, farmer_id=f1_id, farm_id=f1_farm_id, language="hi"
+        )
+
+        # Farmer 2 tries to dispatch Farmer 1's advisory
+        h2 = {"Authorization": f"Bearer {f2_token}"}
+        res = await client.post(
+            "/api/v1/deliveries/dispatch",
+            json={"advisory_id": str(advisory.id), "channels": ["SMS"], "simulate": True},
+            headers=h2,
+        )
+        assert res.status_code == 403
+        assert "access denied" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_rejects_missing_or_invalid_phone_number(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Dispatch must return 422 if the target phone number is missing or invalid."""
+    await seed_crop_database(db_session)
+    farmer_data, token = await register_test_farmer(
+        client, str(uuid.uuid4()), phone="+919833330003", lang="en"
+    )
+    farmer_id = uuid.UUID(farmer_data["id"])
+    farm_id = uuid.UUID(farmer_data["farms"][0]["id"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    norm_meteo = OpenMeteoService._normalize_payload(MOCK_METEO, 18.82, 74.37)
+    with patch.object(OpenMeteoService, "fetch_weather", AsyncMock(return_value=norm_meteo)):
+        advisory = await AdvisoryGenerationService.generate_advisory(
+            db=db_session, farmer_id=farmer_id, farm_id=farm_id, language="en"
+        )
+
+        # Attempt dispatch with invalid phone (<10 digits)
+        res = await client.post(
+            "/api/v1/deliveries/dispatch",
+            json={
+                "advisory_id": str(advisory.id),
+                "channels": ["SMS"],
+                "simulate": True,
+                "custom_phone": "12345",
+            },
+            headers=headers,
+        )
+        assert res.status_code == 422
+        assert "invalid" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_prevents_cross_farmer_phone_spoofing(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Farmer cannot override dispatch phone to target another registered farmer's phone number."""
+    await seed_crop_database(db_session)
+    
+    # Farmer 1 with phone A
+    f1_data, f1_token = await register_test_farmer(
+        client, str(uuid.uuid4()), phone="+919844440001", lang="mr"
+    )
+    # Farmer 2 with phone B
+    f2_data, f2_token = await register_test_farmer(
+        client, str(uuid.uuid4()), phone="+919844440002", lang="hi"
+    )
+    f1_id = uuid.UUID(f1_data["id"])
+    f1_farm_id = uuid.UUID(f1_data["farms"][0]["id"])
+    headers1 = {"Authorization": f"Bearer {f1_token}"}
+
+    norm_meteo = OpenMeteoService._normalize_payload(MOCK_METEO, 18.82, 74.37)
+    with patch.object(OpenMeteoService, "fetch_weather", AsyncMock(return_value=norm_meteo)):
+        advisory = await AdvisoryGenerationService.generate_advisory(
+            db=db_session, farmer_id=f1_id, farm_id=f1_farm_id, language="mr"
+        )
+
+        # Farmer 1 attempts to pass Farmer 2's registered phone as custom_phone
+        res = await client.post(
+            "/api/v1/deliveries/dispatch",
+            json={
+                "advisory_id": str(advisory.id),
+                "channels": ["SMS"],
+                "simulate": True,
+                "custom_phone": "+919844440002",
+            },
+            headers=headers1,
+        )
+        assert res.status_code == 403
+        assert "security violation" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_uses_authenticated_farmer_phone_and_language(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Verify that dispatch dynamically populates recipient phone and language from authenticated profile."""
+    await seed_crop_database(db_session)
+    
+    unique_phone = "+919855550005"
+    f_data, token = await register_test_farmer(
+        client, str(uuid.uuid4()), phone=unique_phone, lang="te"
+    )
+    f_id = uuid.UUID(f_data["id"])
+    farm_id = uuid.UUID(f_data["farms"][0]["id"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    norm_meteo = OpenMeteoService._normalize_payload(MOCK_METEO, 18.82, 74.37)
+    with patch.object(OpenMeteoService, "fetch_weather", AsyncMock(return_value=norm_meteo)):
+        advisory = await AdvisoryGenerationService.generate_advisory(
+            db=db_session, farmer_id=f_id, farm_id=farm_id, language="te"
+        )
+
+        # Dispatch across SMS, Voice, WhatsApp without custom_phone override
+        res = await client.post(
+            "/api/v1/deliveries/dispatch",
+            json={
+                "advisory_id": str(advisory.id),
+                "channels": ["SMS", "VOICE_IVR", "WHATSAPP"],
+                "simulate": True,
+            },
+            headers=headers,
+        )
+        assert res.status_code == 201
+        data = res.json()
+        assert data["farmer_id"] == str(f_id)
+        
+        # Verify all 3 channels dispatched strictly to the authenticated farmer's verified phone
+        for outcome in data["channel_outcomes"]:
+            assert outcome["recipient_phone"] == unique_phone
+            assert outcome["language"] == "te"
+

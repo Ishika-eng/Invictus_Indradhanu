@@ -50,7 +50,7 @@ async def test_complete_12_step_farmer_journey(client: AsyncClient, db_session: 
     # STEP 1, 2, 3: Farmer Registration + GPS Farm Location in Baramati
     # ---------------------------------------------------------
     user_id = str(uuid.uuid4())
-    farmer_phone = f"+9198{uuid.uuid4().hex[:8]}"
+    farmer_phone = f"+9198{uuid.uuid4().int % 100000000:08d}"
     token = create_test_token(user_id, phone=farmer_phone)
     headers = {"Authorization": f"Bearer {token}"}
 

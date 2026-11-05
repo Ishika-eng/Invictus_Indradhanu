@@ -26,6 +26,7 @@ import {
 import confetti from 'canvas-confetti';
 import { useAdvisory, DeliveryChannelChoice } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { Language } from '../../types/advisory';
 import { 
   dispatchAdvisory, 
   fetchDeliveryHistory, 
@@ -53,6 +54,17 @@ export const Step6Delivery: React.FC = () => {
   } = useAdvisory();
 
   const { session, farmer, selectedFarm } = useAuth();
+
+  // Dynamically resolve authenticated farmer identity and verified mobile number
+  const activeRecipientName = farmer?.full_name || farmerName;
+  const activeRecipientPhone = farmer?.phone_number || farmerPhone;
+  const activeLanguage = (farmer?.preferred_language && ['mr', 'hi', 'te', 'sw', 'en'].includes(farmer.preferred_language)
+    ? farmer.preferred_language
+    : selectedLanguage) as Language;
+
+  // Phone number validation: must contain 10 to 15 digits
+  const cleanPhoneDigits = (activeRecipientPhone || '').replace(/\D/g, '');
+  const isPhoneValid = cleanPhoneDigits.length >= 10 && cleanPhoneDigits.length <= 15;
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [copiedSms, setCopiedSms] = useState(false);
@@ -100,25 +112,25 @@ export const Step6Delivery: React.FC = () => {
     },
   ];
 
-  // Multilingual voice scripts
+  // Multilingual voice scripts using dynamic authenticated farmer name
   const voiceScripts: Record<string, string> = {
-    mr: `नमस्कार ${farmerName} साहेब. इंद्रधनुष हवामान कृषी सेवेतून बोलत आहोत. आपल्या ${selectedLocation.city} परिसरात पुढील २४ तासांत पाऊस होण्याची शक्यता असून जमिनीत पुरेसा ओलावा आहे. ${selectedCrop} पिकाला पाणी देणे २४ तास थांबवा. पुन्हा ऐकण्यासाठी १ दाबा, तज्ज्ञांशी बोलण्यासाठी ३ दाबा. धन्यवाद.`,
-    hi: `नमस्ते ${farmerName} जी। इंद्रधनुष किसान सेवा से यह जरूरी मौसम सलाह है। आपके क्षेत्र ${selectedLocation.city} में अगले 24 घंटों में बारिश की संभावना है और मिट्टी में नमी पर्याप्त है। कृपया ${selectedCrop} में 24 घंटे तक सिंचाई टालें। दोबारा सुनने के लिए 1 दबाएं। धन्यवाद।`,
-    te: `నమస్కారం ${farmerName} గారు. ఇంద్రధనుష్ వ్యవసాయ సలహా. ${selectedLocation.city} ప్రాంతంలో రాగల 24 గంటల్లో వర్షం కురిసే అవకాశం ఉంది. దయచేసి ${selectedCrop} పంటకు 24 గంటల పాటు నీటిపారుదలని నిలిపివేయండి. ధన్యవాదాలు.`,
-    sw: `Hujambo ${farmerName}. Huu ni ushauri muhimu kutoka Indradhanu. Katika eneo lako la ${selectedLocation.city}, mvua inatarajiwa ndani ya saa 24 zijazo. Tafadhali sitisha umwagiliaji wa ${selectedCrop} kwa saa 24. Asante sana.`,
-    en: `Hello ${farmerName}. This is your Indradhanu climate assistant. In ${selectedLocation.city}, rain is expected in the next 24 hours and soil moisture is adequate. Please delay irrigation for your ${selectedCrop} crop for 24 hours. Press 1 to replay, 3 for agronomist. Thank you.`
+    mr: `नमस्कार ${activeRecipientName} साहेब. इंद्रधनुष हवामान कृषी सेवेतून बोलत आहोत. आपल्या ${selectedLocation.city} परिसरात पुढील २४ तासांत पाऊस होण्याची शक्यता असून जमिनीत पुरेसा ओलावा आहे. ${selectedCrop} पिकाला पाणी देणे २४ तास थांबवा. पुन्हा ऐकण्यासाठी १ दाबा, तज्ज्ञांशी बोलण्यासाठी ३ दाबा. धन्यवाद.`,
+    hi: `नमस्ते ${activeRecipientName} जी। इंद्रधनुष किसान सेवा से यह जरूरी मौसम सलाह है। आपके क्षेत्र ${selectedLocation.city} में अगले 24 घंटों में बारिश की संभावना है और मिट्टी में नमी पर्याप्त है। कृपया ${selectedCrop} में 24 घंटे तक सिंचाई टालें। दोबारा सुनने के लिए 1 दबाएं। धन्यवाद।`,
+    te: `నమస్కారం ${activeRecipientName} గారు. ఇంద్రధనుష్ వ్యవసాయ సలహా. ${selectedLocation.city} ప్రాంతంలో రాగల 24 గంటల్లో వర్షం కురిసే అవకాశం ఉంది. దయచేసి ${selectedCrop} పంటకు 24 గంటల పాటు నీటిపారుదలని నిలిపివేయండి. ధన్యవాదాలు.`,
+    sw: `Hujambo ${activeRecipientName}. Huu ni ushauri muhimu kutoka Indradhanu. Katika eneo lako la ${selectedLocation.city}, mvua inatarajiwa ndani ya saa 24 zijazo. Tafadhali sitisha umwagiliaji wa ${selectedCrop} kwa saa 24. Asante sana.`,
+    en: `Hello ${activeRecipientName}. This is your Indradhanu climate assistant. In ${selectedLocation.city}, rain is expected in the next 24 hours and soil moisture is adequate. Please delay irrigation for your ${selectedCrop} crop for 24 hours. Press 1 to replay, 3 for agronomist. Thank you.`
   };
 
   const smsTexts: Record<string, string> = {
-    mr: `इंद्रधनुष कृषी: ${farmerName} जी, ${selectedLocation.city} मध्ये उद्या पाऊस अपेक्षित. ${selectedCrop} पिकाला २४ तास पाणी देणे पुढे ढकला. टोल-फ्री: 1800-INDRA [STOP to opt-out]`,
-    hi: `इंद्रधनुष कृषि सलाह: ${farmerName} जी, ${selectedLocation.city} में कल बारिश का अनुमान है। ${selectedCrop} में 24 घंटे तक सिंचाई रोकें। हेल्पलाइन: 1800-INDRA [STOP to opt-out]`,
-    te: `ఇంద్రధనుష్ సలహా: ${farmerName} గారు, రేపు వర్షం కురిసే అవకాశం ఉంది. ${selectedCrop} కు 24 గంటలు నీరు పెట్టవద్దు. [STOP to opt-out]`,
-    sw: `USHAURI WA INDRADHANU: ${farmerName}, mvua inatarajiwa kesho. USIMWAGILIE ${selectedCrop} kwa saa 24. [STOP to opt-out]`,
-    en: `INDRADHANU ADVISORY: ${farmerName}, rain expected tomorrow in ${selectedLocation.city}. Delay irrigation for ${selectedCrop} by 24 hours. Helpline: 1800-INDRA [Reply STOP to opt-out]`
+    mr: `इंद्रधनुष कृषी: ${activeRecipientName} जी, ${selectedLocation.city} मध्ये उद्या पाऊस अपेक्षित. ${selectedCrop} पिकाला २४ तास पाणी देणे पुढे ढकला. टोल-फ्री: 1800-INDRA [STOP to opt-out]`,
+    hi: `इंद्रधनुष कृषि सलाह: ${activeRecipientName} जी, ${selectedLocation.city} में कल बारिश का अनुमान है। ${selectedCrop} में 24 घंटे तक सिंचाई रोकें। हेल्पलाइन: 1800-INDRA [STOP to opt-out]`,
+    te: `ఇంద్రధనుష్ సలహా: ${activeRecipientName} గారు, రేపు వర్షం కురిసే అవకాశం ఉంది. ${selectedCrop} కు 24 గంటలు నీరు పెట్టవద్దు. [STOP to opt-out]`,
+    sw: `USHAURI WA INDRADHANU: ${activeRecipientName}, mvua inatarajiwa kesho. USIMWAGILIE ${selectedCrop} kwa saa 24. [STOP to opt-out]`,
+    en: `INDRADHANU ADVISORY: ${activeRecipientName}, rain expected tomorrow in ${selectedLocation.city}. Delay irrigation for ${selectedCrop} by 24 hours. Helpline: 1800-INDRA [Reply STOP to opt-out]`
   };
 
-  const currentVoiceScript = voiceScripts[selectedLanguage] || voiceScripts.en;
-  const currentSmsText = smsTexts[selectedLanguage] || smsTexts.en;
+  const currentVoiceScript = voiceScripts[activeLanguage] || voiceScripts[selectedLanguage] || voiceScripts.en;
+  const currentSmsText = smsTexts[activeLanguage] || smsTexts[selectedLanguage] || smsTexts.en;
 
   // Load recent delivery logs
   const refreshHistory = async () => {
@@ -139,6 +151,15 @@ export const Step6Delivery: React.FC = () => {
   const handleDispatch = async (overrideChannel?: string) => {
     setErrorMessage(null);
 
+    // Validation: Phone number must be present and valid (10 to 15 digits)
+    if (!isPhoneValid) {
+      setErrorMessage(`Cannot dispatch: Recipient phone number "${activeRecipientPhone || 'Not provided'}" is missing or invalid. Please provide a valid 10-15 digit mobile number.`);
+      setToastMessage('Invalid recipient mobile number. Update profile in Step 1 to dispatch.');
+      setToastType('warning');
+      setShowToast(true);
+      return;
+    }
+
     // Consent validation check
     if (!isOptedIn) {
       setErrorMessage(`Cannot dispatch: Farmer has opted out of automated advisory communications.`);
@@ -157,7 +178,7 @@ export const Step6Delivery: React.FC = () => {
       if (!targetAdvisoryId && session?.access_token && selectedFarm?.id) {
         try {
           const generated = await generateFarmAdvisory(
-            { farm_id: selectedFarm.id, language: selectedLanguage },
+            { farm_id: selectedFarm.id, language: activeLanguage },
             session.access_token
           );
           setLatestBackendAdvisory(generated);
@@ -177,7 +198,7 @@ export const Step6Delivery: React.FC = () => {
             advisory_id: targetAdvisoryId,
             channels: chosenChannel === 'ALL' ? ['SMS', 'VOICE_IVR', 'WHATSAPP'] : [chosenChannel],
             simulate: isSimulationMode,
-            custom_phone: farmerPhone
+            custom_phone: activeRecipientPhone
           },
           session.access_token
         );
@@ -187,8 +208,8 @@ export const Step6Delivery: React.FC = () => {
 
         const isSim = res.mode === 'SIMULATION';
         const msg = isSim
-          ? `Advisory simulated safely via sandbox for ${chosenChannel}`
-          : `Live advisory transmitted to ${chosenChannel} carrier gateway!`;
+          ? `Advisory simulated safely via sandbox for ${chosenChannel} to ${activeRecipientPhone}`
+          : `Live advisory transmitted to ${chosenChannel} carrier gateway for ${activeRecipientPhone}!`;
 
         setToastMessage(msg);
         setToastType(isSim ? 'warning' : 'success');
@@ -204,15 +225,18 @@ export const Step6Delivery: React.FC = () => {
         // Sandboxed fallback for guest / demonstration mode
         await new Promise(r => setTimeout(r, 1200));
 
+        const resolvedAdvisoryId = targetAdvisoryId || (latestBackendAdvisory?.id || `adv_${Date.now()}`);
+        const resolvedFarmerId = farmer?.id || 'farmer_authenticated';
+
         const simResult: DeliveryLogResponse = {
           id: `sim_log_${Date.now()}`,
-          advisory_id: targetAdvisoryId || 'advisory_demo_001',
-          farmer_id: farmer?.id || 'farmer_demo_001',
+          advisory_id: resolvedAdvisoryId,
+          farmer_id: resolvedFarmerId,
           channel: chosenChannel,
           status: isSimulationMode ? 'SIMULATED' : 'DELIVERED',
-          recipient_phone: farmerPhone,
+          recipient_phone: activeRecipientPhone,
           content_snippet: currentSmsText,
-          language: selectedLanguage,
+          language: activeLanguage,
           provider: chosenChannel === 'VOICE_IVR' ? 'Exotel Voice Gateway' : (chosenChannel === 'WHATSAPP' ? 'Meta Cloud API' : 'MSG91 DLT'),
           carrier_message_id: `${chosenChannel}_SIM_${Date.now()}`,
           retry_count: 0,
@@ -222,21 +246,21 @@ export const Step6Delivery: React.FC = () => {
 
         setLatestDispatchResponse({
           dispatch_id: `disp_${Date.now()}`,
-          advisory_id: targetAdvisoryId || 'advisory_demo_001',
-          farmer_id: farmer?.id || 'farmer_demo_001',
+          advisory_id: resolvedAdvisoryId,
+          farmer_id: resolvedFarmerId,
           channel_outcomes: [simResult],
           mode: isSimulationMode ? 'SIMULATION' : 'LIVE',
           summary: isSimulationMode 
-            ? `Sandbox simulated 1 broadcast via ${chosenChannel}` 
-            : `Carrier queued 1 message via ${chosenChannel}`
+            ? `Sandbox simulated 1 broadcast via ${chosenChannel} to ${activeRecipientPhone}` 
+            : `Carrier queued 1 message via ${chosenChannel} to ${activeRecipientPhone}`
         });
 
         setRecentLogs(prev => [simResult, ...prev]);
 
         setToastMessage(
           isSimulationMode 
-            ? `Sandbox simulation completed for ${chosenChannel} (Zero Carrier Cost)`
-            : `Carrier dispatch triggered for ${farmerPhone}`
+            ? `Sandbox simulation completed for ${chosenChannel} to ${activeRecipientPhone}`
+            : `Carrier dispatch triggered for ${activeRecipientPhone}`
         );
         setToastType(isSimulationMode ? 'warning' : 'success');
         setShowToast(true);
@@ -266,7 +290,7 @@ export const Step6Delivery: React.FC = () => {
     try {
       if (session?.access_token) {
         if (!targetStatus) {
-          await optOutFarmer({ phone_number: farmerPhone, reason: 'Farmer requested via UI STOP' }, session.access_token);
+          await optOutFarmer({ phone_number: activeRecipientPhone, reason: 'Farmer requested via UI STOP' }, session.access_token);
         } else {
           await updateFarmerPreferences({ preferred_channel: 'SMS', is_opted_in: true }, session.access_token);
         }
@@ -316,7 +340,7 @@ export const Step6Delivery: React.FC = () => {
             Deliver Verified Advisory to Farmer
           </h2>
           <p className="text-xs text-moss-500 mt-0.5">
-            Deliver localized climate recommendations to <strong className="text-moss-800">{farmerName}</strong> ({farmerPhone}) across Indian telecom channels.
+            Deliver localized climate recommendations to <strong className="text-moss-800">{activeRecipientName}</strong> ({activeRecipientPhone || 'No phone number'}) across Indian telecom channels.
           </p>
         </div>
 
@@ -401,6 +425,18 @@ export const Step6Delivery: React.FC = () => {
         </div>
       )}
 
+      {!isPhoneValid && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          <div>
+            <p className="font-bold">Missing or Invalid Recipient Phone</p>
+            <p className="text-rose-700 mt-0.5">
+              The recipient mobile number "{activeRecipientPhone || 'Not provided'}" is not a valid 10-15 digit phone number. Please update your profile in Step 1 before dispatching advisories.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Channel Selector Cards */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -410,8 +446,8 @@ export const Step6Delivery: React.FC = () => {
           <button
             type="button"
             onClick={() => handleDispatch('ALL')}
-            disabled={isSending || !isOptedIn}
-            className="flex items-center gap-1.5 text-xs font-bold text-agri-700 hover:text-agri-800 transition-colors"
+            disabled={isSending || !isOptedIn || !isPhoneValid}
+            className="flex items-center gap-1.5 text-xs font-bold text-agri-700 hover:text-agri-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Layers className="w-3.5 h-3.5" />
             <span>Broadcast All 3 Channels Simultaneously</span>
@@ -477,12 +513,12 @@ export const Step6Delivery: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h4 className="font-display font-extrabold text-sm sm:text-base text-moss-900">
-              Ready to Dispatch to {farmerName}
+              Ready to Dispatch to {activeRecipientName}
             </h4>
             <p className="text-xs text-moss-500 mt-0.5">
               Target Channel: <strong className="text-agri-900">{selectedDeliveryChannel.toUpperCase()}</strong> • 
-              Recipient: <strong className="text-agri-900">{farmerPhone}</strong> • 
-              Language: <strong className="text-agri-900">{selectedLanguage.toUpperCase()}</strong> • 
+              Recipient: <strong className="text-agri-900">{activeRecipientPhone || 'Missing phone'}</strong> • 
+              Language: <strong className="text-agri-900">{activeLanguage.toUpperCase()}</strong> • 
               Mode: <strong className={isSimulationMode ? 'text-sky-700' : 'text-emerald-700'}>
                 {isSimulationMode ? 'SANDBOX SIMULATION' : 'LIVE DISPATCH'}
               </strong>
@@ -492,9 +528,9 @@ export const Step6Delivery: React.FC = () => {
           <button
             type="button"
             onClick={() => handleDispatch()}
-            disabled={isSending || !isOptedIn}
+            disabled={isSending || !isOptedIn || !isPhoneValid}
             className={`flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl font-black text-sm tracking-wide transition-all shadow-soft active:scale-95 ${
-              !isOptedIn
+              !isOptedIn || !isPhoneValid
                 ? 'bg-canvas-200 text-moss-400 cursor-not-allowed border border-canvas-300'
                 : isSending
                 ? 'bg-moss-700 text-canvas-200 cursor-wait'
@@ -507,6 +543,11 @@ export const Step6Delivery: React.FC = () => {
               <>
                 <Radio className="w-5 h-5 animate-spin text-canvas-200" />
                 <span>Contacting Provider Gateway...</span>
+              </>
+            ) : !isPhoneValid ? (
+              <>
+                <AlertTriangle className="w-5 h-5 text-rose-500" />
+                <span>Invalid Recipient Phone</span>
               </>
             ) : !isOptedIn ? (
               <>
@@ -589,7 +630,7 @@ export const Step6Delivery: React.FC = () => {
         </div>
 
         <p className="text-xs text-canvas-300 font-medium mb-2">
-          Farmer receives on phone ({farmerName} • {farmerPhone}):
+          Farmer receives on phone ({activeRecipientName} • {activeRecipientPhone}):
         </p>
 
         {/* Clear actionable message receipt */}
@@ -626,7 +667,7 @@ export const Step6Delivery: React.FC = () => {
                   Exotel Automated Voice Call (GSM IVR)
                 </h4>
                 <p className="text-[11px] text-moss-400">
-                  Recipient: {farmerName} ({farmerPhone}) • Dialect: {selectedLanguage.toUpperCase()}
+                  Recipient: {activeRecipientName} ({activeRecipientPhone}) • Dialect: {activeLanguage.toUpperCase()}
                 </p>
               </div>
             </div>
@@ -691,7 +732,7 @@ export const Step6Delivery: React.FC = () => {
           {/* Transcript */}
           <div className="p-4 rounded-2xl bg-moss-800/60 border border-moss-700/60">
             <span className="text-[10px] font-bold uppercase tracking-wider text-agri-300 block mb-1">
-              Spoken Transcript ({selectedLanguage.toUpperCase()}):
+              Spoken Transcript ({activeLanguage.toUpperCase()}):
             </span>
             <p className="text-xs sm:text-sm text-canvas-100 font-medium italic font-serif leading-relaxed">
               "{currentVoiceScript}"
@@ -745,7 +786,7 @@ export const Step6Delivery: React.FC = () => {
             </div>
 
             <div className="pt-2 text-center text-[10px] text-moss-400 font-mono">
-              Sent to {farmerPhone} ({farmerName})
+              Sent to {activeRecipientPhone} ({activeRecipientName})
             </div>
           </div>
         </div>
@@ -773,7 +814,7 @@ export const Step6Delivery: React.FC = () => {
               <span className="text-base">🌈</span>
               <div>
                 <p className="font-bold text-xs text-[#e9edef]">Indradhanu Krishi Official</p>
-                <p className="text-[10px] text-[#8696a0]">Verified Business Account • Online</p>
+                <p className="text-[10px] text-[#8696a0]">Verified Business Account • Online • To: {activeRecipientPhone} ({activeRecipientName})</p>
               </div>
             </div>
 

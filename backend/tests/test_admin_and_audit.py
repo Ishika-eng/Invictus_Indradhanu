@@ -38,7 +38,7 @@ async def test_admin_overview_metrics(client: AsyncClient, db_session: AsyncSess
 async def test_admin_farmer_directory_search_and_detail(client: AsyncClient, db_session: AsyncSession):
     """Tests searching, filtering, and viewing comprehensive farmer details."""
     await seed_crop_database(db_session)
-    unique_phone = f"+9198{uuid.uuid4().hex[:8]}"
+    unique_phone = f"+9198{uuid.uuid4().int % 100000000:08d}"
 
     farmer = Farmer(
         id=uuid.uuid4(),
@@ -80,7 +80,7 @@ async def test_admin_farmer_directory_search_and_detail(client: AsyncClient, db_
 async def test_admin_advisory_reassessment_and_resend(client: AsyncClient, db_session: AsyncSession):
     """Tests triggering live advisory reassessment and resending notifications with duplicate protection."""
     await seed_crop_database(db_session)
-    farmer_phone = f"+9191{uuid.uuid4().hex[:8]}"
+    farmer_phone = f"+9191{uuid.uuid4().int % 100000000:08d}"
 
     farmer = Farmer(
         id=uuid.uuid4(),
@@ -166,7 +166,7 @@ async def test_admin_feedback_and_audit_trail(client: AsyncClient, db_session: A
     farmer = Farmer(
         id=farmer_id,
         full_name="Kisan Rao",
-        phone_number=f"+9193{uuid.uuid4().hex[:8]}",
+        phone_number=f"+9193{uuid.uuid4().int % 100000000:08d}",
         village="Nashik",
         district="Nashik",
         state="Maharashtra",
