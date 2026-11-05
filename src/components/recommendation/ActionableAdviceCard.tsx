@@ -139,7 +139,7 @@ export const ActionableAdviceCard: React.FC = () => {
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-[10px] text-agri-800 font-bold">
               <Droplet className="w-3 h-3 text-skyalt-600" />
-              <span>~3,200L Water Conserved</span>
+              <span>Optimizes Pumping & Prevents Waterlogging</span>
             </div>
           </div>
         </div>

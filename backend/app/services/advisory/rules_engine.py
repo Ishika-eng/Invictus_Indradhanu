@@ -26,6 +26,33 @@ class AdvisoryRulesEngine:
     )
 
     @classmethod
+    def calculate_confidence(
+        cls,
+        has_current_weather: bool,
+        has_daily_forecast: bool,
+        has_crop_profile: bool,
+        soil_sensor_available: bool,
+    ) -> float:
+        """Calculates deterministic advisory confidence based on verifiable telemetry tiers:
+        - Baseline (NWP numerical forecast + biophysical phenology matching): 84.0%
+        - Validated crop phenological profile: +4.0%
+        - Current hourly meteorological observations verified: +2.0%
+        - 7-day numerical ensemble forecast verified: +2.0%
+        - In-situ ground soil probe telemetry streaming: +4.0%
+        - When in-situ sensor is absent, maximum confidence is capped at 92.0%
+        """
+        score = 84.0
+        if has_crop_profile:
+            score += 4.0
+        if has_current_weather:
+            score += 2.0
+        if has_daily_forecast:
+            score += 2.0
+        if soil_sensor_available:
+            score += 4.0
+        return min(96.0, max(75.0, score))
+
+    @classmethod
     def evaluate_directives(
         cls,
         crop_name: str,
@@ -76,6 +103,12 @@ class AdvisoryRulesEngine:
 
         crop_lower = crop_name.lower()
         stage_lower = stage_name.lower()
+        confidence = cls.calculate_confidence(
+            has_current_weather=bool(current_weather),
+            has_daily_forecast=bool(daily_forecast and len(daily_forecast) > 0),
+            has_crop_profile=bool(crop_profile),
+            soil_sensor_available=soil_sensor_available,
+        )
 
         # ==============================================================================
         # 1. WATER & IRRIGATION DIRECTIVES
@@ -99,7 +132,7 @@ class AdvisoryRulesEngine:
                 risk_if_ignored=(
                     f"Root-zone waterlogging, blossom drop in {stage_name}, increased fungal rot, and unnecessary electricity/water cost."
                 ),
-                projected_impact="Conserves ~3,500 to 5,000 liters of irrigation water per acre and preserves root aeration.",
+                projected_impact="Conserves irrigation water and pump energy, prevents fertilizer nutrient leaching, and preserves aerated root zone.",
                 action_steps=[
                     "Turn off automatic drip pumps and canal sluice gates.",
                     "Verify field drainage outlets are unobstructed so storm runoff drains freely.",
@@ -111,7 +144,7 @@ class AdvisoryRulesEngine:
                     f"Crop growth stage: '{stage_name}' with water demand sensitivity",
                 ],
                 data_limitations=soil_limitation,
-                confidence_pct=94.0,
+                confidence_pct=confidence,
             ))
 
         # Case 1B: Heat Stress + Atmospheric Dryness -> LIGHT EARLY-MORNING IRRIGATION
@@ -139,7 +172,7 @@ class AdvisoryRulesEngine:
                     f"Zero significant rainfall forecast ({next_24h_rain:.1f} mm)",
                 ],
                 data_limitations=soil_limitation,
-                confidence_pct=90.0,
+                confidence_pct=confidence,
             ))
 
         # Case 1C: Normal routine irrigation window
@@ -162,7 +195,7 @@ class AdvisoryRulesEngine:
                     f"Rainfall forecast: {next_24h_rain:.1f} mm",
                 ],
                 data_limitations=soil_limitation,
-                confidence_pct=88.0,
+                confidence_pct=confidence,
             ))
 
         # ==============================================================================
@@ -193,7 +226,7 @@ class AdvisoryRulesEngine:
                     f"Wind risk index: {wind_risk:.1f}/100",
                 ],
                 data_limitations=None,
-                confidence_pct=95.0,
+                confidence_pct=confidence,
             ))
 
         # Case 2B: High Humidity Fungal Window + Calm Conditions -> PREVENTIVE BIO-SPRAY
@@ -222,7 +255,7 @@ class AdvisoryRulesEngine:
                     f"Disease vulnerability score: {disease_risk:.1f}/100",
                 ],
                 data_limitations=None,
-                confidence_pct=91.0,
+                confidence_pct=confidence,
             ))
 
         # ==============================================================================
@@ -251,7 +284,7 @@ class AdvisoryRulesEngine:
                     f"Heavy rainfall risk index: {rain_risk:.1f}/100",
                 ],
                 data_limitations=None,
-                confidence_pct=93.0,
+                confidence_pct=confidence,
             ))
 
         # ==============================================================================
@@ -279,7 +312,7 @@ class AdvisoryRulesEngine:
                     f"Forecast rainfall: {next_24h_rain:.1f} mm",
                 ],
                 data_limitations=None,
-                confidence_pct=95.0,
+                confidence_pct=confidence,
             ))
 
         # Tall canopy earthing up for wind
@@ -302,7 +335,7 @@ class AdvisoryRulesEngine:
                     f"Tall canopy crop: {crop_name}",
                 ],
                 data_limitations=None,
-                confidence_pct=89.0,
+                confidence_pct=confidence,
             ))
 
         # ==============================================================================

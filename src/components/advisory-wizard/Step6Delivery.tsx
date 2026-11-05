@@ -607,7 +607,7 @@ export const Step6Delivery: React.FC = () => {
             <ShieldCheck className="w-3.5 h-3.5 text-agri-400" />
             <span>Delivered via regional GSM cellular tower</span>
           </div>
-          <span className="font-mono text-agri-300">Impact: ~3,200L irrigation water saved</span>
+          <span className="font-mono text-agri-300">Impact: Prevents waterlogging & saves pumping energy</span>
         </div>
       </div>
 

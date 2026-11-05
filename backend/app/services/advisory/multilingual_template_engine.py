@@ -81,7 +81,7 @@ class MultilingualTemplateEngine:
                 why_it_matters = "पुढील २४ तासांत मुसळधार पावसाची शक्यता आहे. आता पाणी दिल्यास मुळांमध्ये हवा खेळती राहणार नाही आणि पिकाला फटका बसेल."
                 timing = "पुढील २४ ते ४८ तास"
                 risk = "मुळांना पाणी साचून कुज निर्माण होणे, फुलगळ होणे आणि वीज/पाण्याचा नाहक खर्च."
-                impact = "सुमारे ३,५०० ते ५,००० लिटर पाणी वाचेल आणि मुळांचे नुकसान टळेल."
+                impact = "पाणी व वीज खर्च वाचेल, खतांचा निचरा टळेल आणि मुळांचे नुकसान रोखले जाईल."
                 action_steps = [
                     "ठिबक किंवा कालव्याचे सिंचन तात्काळ बंद करा.",
                     "शेतातील अतिरिक्त पाण्याचा निचरा होण्यासाठी बांधाची चर साफ करा.",
@@ -142,7 +142,7 @@ class MultilingualTemplateEngine:
                 why_it_matters = "अगले 24 घंटों में अच्छी वर्षा की संभावना है। अभी पानी देने से खेत में जलभराव होगा और जड़ों को नुकसान पहुंचेगा।"
                 timing = "अगले 24 से 48 घंटे"
                 risk = "जड़ों का सड़ना, फूल झड़ना और बिजली व पानी का अनावश्यक खर्च।"
-                impact = "लगभग 3,500 से 5,000 लीटर पानी की बचत और जड़ों की सुरक्षा।"
+                impact = "सिंचाई जल और पंप बिजली की बचत, उर्वरक का बहना रुकेगा और जड़ों को ऑक्सीजन की सुरक्षा।"
                 action_steps = [
                     "ड्रिप या ट्यूबवेल पंप तुरंत बंद करें।",
                     "खेत से वर्षा जल निकासी के लिए नालियों को साफ करें।"
@@ -196,7 +196,7 @@ class MultilingualTemplateEngine:
                 why_it_matters = "రాబోయే 24 గంటల్లో భారీ వర్షం కురిసే అవకాశం ఉంది. ఇప్పుడు నీరు పెడితే వేర్లు కుళ్ళిపోతాయి."
                 timing = "రాబోయే 24 నుండి 48 గంటలు"
                 risk = "నీరు నిలిచిపోయి వేరు కుళ్ళు తెగులు రావడం మరియు విద్యుత్ వృధా కావడం."
-                impact = "సుమారు 4,000 లీటర్ల నీరు ఆదా అవుతుంది మరియు పంట సురక్షితంగా ఉంటుంది."
+                impact = "నీరు మరియు పంపు విద్యుత్ ఆదా అవుతాయి, ఎరువుల వృథా తగ్గుతుంది మరియు వేర్ల ఆరోగ్యం రక్షించబడుతుంది."
                 action_steps = [
                     "బోరు లేదా డ్రిప్ పంపులను వెంటనే ఆపివేయండి.",
                     "వర్షపు నీరు బయటకు వెళ్ళడానికి పొలంలో కాలువలను శుభ్రం చేయండి."
@@ -225,7 +225,7 @@ class MultilingualTemplateEngine:
                 why_it_matters = "Mvua kubwa inatarajiwa ndani ya masaa 24 yajayo. Kumwagilia sasa kutasababisha mafuriko mizizini na kuoza."
                 timing = "Masaa 24 hadi 48 yajayo"
                 risk = "Mizizi kuoza kwa kukosa hewa, maua kuanguka, na kupoteza nguvu ya pampu."
-                impact = "Inaokoa lita 4,000 za maji na kulinda afya ya mizizi."
+                impact = "Inaokoa maji ya umwagiliaji na nishati ya pampu, inazuia mbolea kuoshwa, na inalinda mizizi dhidi ya kukosa hewa."
                 action_steps = [
                     "Zima pampu za umwagiliaji mara moja.",
                     "Safisha mitaro ya shambani ili kuruhusu maji ya mvua kupita kwa urahisi."

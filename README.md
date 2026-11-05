@@ -200,7 +200,7 @@ The application works out of the box with built-in presentation data and local d
 3. **Step 3: AI Radar Processing**:
    - 4-phase reasoning engine analyzing satellite grid telemetry and root-zone moisture metrics.
 4. **Step 4: Climate Intelligence Layer**:
-   - Real-time temperature, 7-day weather timeline, animated root-zone soil gauge (74%), and composite risk score (**62/100 Moderate**).
+   - Real-time temperature, 7-day weather timeline, root hydration status (transparent in-situ probe availability), and composite phenological risk score evaluated via ICAR/FAO biophysical rules.
 5. **Step 5: Actionable Recommendation ("YOUR FARMER ADVISORY")**:
    - **Immediate Action**: *"Delay irrigation for 24 hours."*
    - **Why It Matters**: *"Rain is likely in the next 24 hours and soil moisture is currently adequate. Irrigating now may cause waterlogging."*

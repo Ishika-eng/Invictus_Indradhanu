@@ -153,45 +153,45 @@ export const MOCK_DEFAULT_ADVISORY: AIAdvisory = {
   irrigationType: 'Drip Irrigation',
   createdAt: 'Just now (Synced with Open-Meteo)',
   riskLevel: 'WATCH',
-  confidencePct: 94,
+  confidencePct: 92,
 
   immediateAction: 'Delay scheduled irrigation by 36 hours & postpone fungal foliar spray until Friday morning.',
-  whyItMatters: 'Convective thunderstorm of 38mm is 82% probable starting tomorrow afternoon. Root zone soil moisture is already at 74% (saturated). Irrigating now will trigger root hypoxia and flower drop.',
+  whyItMatters: 'Convective thunderstorm of 38mm is 82% probable starting tomorrow afternoon. In-situ probe is unavailable; advice is derived from atmospheric precipitation balance. Irrigating now will trigger root hypoxia and flower drop.',
   recommendedTiming: 'Immediate window: Next 36 hours (Sept 10 - Sept 12). Resume normal schedule Sept 13.',
-  impactPotential: 'Prevents 15-20% premature flower abortion and saves ~3,200 liters of canal/pump water per acre.',
+  impactPotential: 'Prevents 15-20% premature flower abortion and optimizes pumping energy while protecting root aeration.',
 
   translations: {
     en: {
       immediateAction: 'Delay scheduled irrigation by 36 hours & postpone fungal foliar spray until Friday morning.',
-      whyItMatters: 'Convective thunderstorm of 38mm is 82% probable starting tomorrow afternoon. Root zone soil moisture is already at 74% (saturated). Irrigating now will trigger root hypoxia and flower drop.',
+      whyItMatters: 'Convective thunderstorm of 38mm is 82% probable starting tomorrow afternoon. In-situ soil probe is unavailable on this plot; advice is derived from atmospheric rainfall balance. Irrigating now will trigger root hypoxia and flower drop.',
       recommendedTiming: 'Next 36 hours (Sept 10 - Sept 12). Resume normal schedule Sept 13.',
       smsBody: 'INDRADHANU KRISHI ADVISORY: Ramesh ji, heavy rain (38mm) expected tomorrow in Dindori. DO NOT irrigate tomato crop for 36 hours. Postpone all chemical spray to Friday morning. Helpline: 1800-INDRA.',
-      voiceScript: 'Namaskar Ramesh Patil ji. This is your automated Indradhanu farm weather assistant. In your village Dindori, our satellites detect heavy rainfall of 38 millimeters within the next 24 to 36 hours. Your soil moisture is currently very high. Please pause all drip irrigation immediately to protect your flowering tomato crop from waterlogging and flower drop. Postpone spray until Friday morning. Thank you.'
+      voiceScript: 'Namaskar Ramesh Patil ji. This is your automated Indradhanu farm weather assistant. In your village Dindori, our satellites detect heavy rainfall of 38 millimeters within the next 24 to 36 hours. Please pause all drip irrigation immediately to protect your flowering tomato crop from waterlogging and flower drop. Postpone spray until Friday morning. Thank you.'
     },
     hi: {
       immediateAction: 'अगले 36 घंटे तक सिंचाई रोकें और फफूंदनाशक छिड़काव शुक्रवार सुबह तक टालें।',
-      whyItMatters: 'कल दोपहर से 38 मिमी भारी बारिश की 82% संभावना है। खेत की मिट्टी में नमी पहले से 74% है। पानी देने से फूल झड़ सकते हैं और जड़ें सड़ सकती हैं।',
+      whyItMatters: 'कल दोपहर से 38 मिमी भारी बारिश की 82% संभावना है। भारी बारिश से खेत में जलभराव का खतरा है। पानी देने से फूल झड़ सकते हैं और जड़ें सड़ सकती हैं।',
       recommendedTiming: 'अगले 36 घंटे (10 से 12 सितंबर तक)। 13 सितंबर से सामान्य सिंचाई शुरू करें।',
       smsBody: 'इंद्रधनुष कृषि सलाह: रमेश जी, डिंडोरी में कल 38 मिमी भारी बारिश का अनुमान है। टमाटर में 36 घंटे तक पानी न दें और छिड़काव शुक्रवार तक टालें। टोल फ्री: 1800-INDRA',
-      voiceScript: 'नमस्ते रमेश पाटिल जी। इंद्रधनुष किसान सेवा से यह जरूरी मौसम सलाह है। आपके गांव डिंडोरी में अगले 24 से 36 घंटों में 38 मिलीमीटर भारी बारिश होने की पूरी संभावना है। आपकी जमीन में नमी पर्याप्त है। कृपया अपनी टमाटर की फसल में ड्रिप सिंचाई तुरंत रोक दें जिससे फूल न गिरें। कीटनाशक छिड़काव शुक्रवार सुबह करें। धन्यवाद।'
+      voiceScript: 'नमस्ते रमेश पाटिल जी। इंद्रधनुष किसान सेवा से यह जरूरी मौसम सलाह है। आपके गांव डिंडोरी में अगले 24 से 36 घंटों में 38 मिलीमीटर भारी बारिश होने की पूरी संभावना है। कृपया अपनी टमाटर की फसल में ड्रिप सिंचाई तुरंत रोक दें जिससे फूल न गिरें। कीटनाशक छिड़काव शुक्रवार सुबह करें। धन्यवाद।'
     },
     mr: {
       immediateAction: 'पुढील ३६ तास ठिबक सिंचन थांबवा आणि बुरशीनाशक फवारणी शुक्रवार सकाळपर्यंत पुढे ढकला.',
-      whyItMatters: 'उद्या दुपारपासून ३८ मिमी जोरदार पावसाची शक्यता आहे. जमिनीत ओलावा आधीच ७४% आहे. जास्त पाण्यामुळे टोमॅटोचे फुलगळ होण्याची दाट भीती आहे.',
+      whyItMatters: 'उद्या दुपारपासून ३८ मिमी जोरदार पावसाची शक्यता आहे. पावसामुळे जमिनीत पाणी साचून टोमॅटोचे फुलगळ होण्याची दाट भीती आहे.',
       recommendedTiming: 'पुढील ३६ तास (१० ते १२ सप्टेंबर). १३ सप्टेंबरपासून पूर्ववत पाणी द्या.',
       smsBody: 'इंद्रधनुष कृषी सल्ला: रमेश जी, दिंडोरी भागात उद्या ३८ मिमी जोरदार पाऊस अपेक्षित आहे. टोमॅटो पिकाला ३६ तास पाणी देऊ नका आणि फवारणी शुक्रवारपर्यंत पुढे ढकला. हेल्पलाईन: 1800-INDRA',
-      voiceScript: 'नमस्कार रमेश पाटील साहेब. इंद्रधनुष हवामान कृषी सेवेतून बोलत आहोत. आपल्या दिंडोरी परिसरामध्ये पुढील २४ ते ३६ तासांत ३८ मिलीमीटर जोरदार अवकाळी पाऊस होण्याची शक्यता उपग्रहाद्वारे नोंदवली गेली आहे. जमिनीतील ओलावा आधीच जास्त असल्याने टोमॅटो पिकाची फुलगळ वाचवण्यासाठी ठिबक सिंचन त्वरित थांबवा. फवारणी शुक्रवार सकाळी करा. धन्यवाद.'
+      voiceScript: 'नमस्कार रमेश पाटील साहेब. इंद्रधनुष हवामान कृषी सेवेतून बोलत आहोत. आपल्या दिंडोरी परिसरामध्ये पुढील २४ ते ३६ तासांत ३८ मिलीमीटर जोरदार अवकाळी पाऊस होण्याची शक्यता उपग्रहाद्वारे नोंदवली गेली आहे. टोमॅटो पिकाची फुलगळ वाचवण्यासाठी ठिबक सिंचन त्वरित थांबवा. फवारणी शुक्रवार सकाळी करा. धन्यवाद.'
     },
     te: {
       immediateAction: 'తదుపరి 36 గంటల పాటు నీటిపారుదలని నిలిపివేయండి మరియు మందుల పిచికారీని శుక్రవారం ఉదయానికి వాయిదా వేయండి.',
-      whyItMatters: 'రేపు మధ్యాహ్నం నుండి 38 మి.మీ భారీ వర్షం కురిసే అవకాశం 82% ఉంది. వేరు ప్రాంతంలో తేమ ఇప్పటికే 74% ఉంది. ఇప్పుడు నీరు పెడితే పువ్వు రాలిపోయే ప్రమాదం ఉంది.',
+      whyItMatters: 'రేపు మధ్యాహ్నం నుండి 38 మి.మీ భారీ వర్షం కురిసే అవకాశం 82% ఉంది. వర్షం వల్ల నేలలో నీరు నిలిచిపోయే ప్రమాదం ఉంది. ఇప్పుడు నీరు పెడితే పువ్వు రాలిపోయే ప్రమాదం ఉంది.',
       recommendedTiming: 'తదుపరి 36 గంటలు (సెప్టెంబర్ 10 - 12). సెప్టెంబర్ 13 నుండి సాధారణ నీటిపారుదల.',
       smsBody: 'ఇంద్రధనుష్ వ్యవసాయ సలహా: రమేష్ గారు, రేపు 38 మి.మీ వర్షం కురిసే అవకాశం ఉంది. 36 గంటల పాటు టమాటా పంటకు నీరు పెట్టవద్దు. పిచికారీని శుక్రవారానికి వాయిదా వేయండి.',
       voiceScript: 'నమస్కారం రమేష్ పాటిల్ గారు. ఇంద్రధనుష్ రైతు వాతావరణ సేవ. మీ ప్రాంతంలో రాగల 24 నుండి 36 గంటల్లో భారీ వర్షం కురిసే అవకాశం ఉంది. దయచేసి టమాటా తోటకు నీరు పెట్టడం ఆపండి. ధన్యవాదాలు.'
     },
     sw: {
       immediateAction: 'Sitisha umwagiliaji kwa saa 36 zijazo na usubiri kupulizia dawa hadi Ijumaa asubuhi.',
-      whyItMatters: 'Mvua kubwa ya milimita 38 inatarajiwa kesho mchana. Unyevu wa ardhi tayari uko juu kwa 74%. Kumwagilia sasa kutasababisha maua ya nyanya kupukutika.',
+      whyItMatters: 'Mvua kubwa ya milimita 38 inatarajiwa kesho mchana. Mvua kubwa itasababisha mafuriko ya maji shambani. Kumwagilia sasa kutasababisha maua ya nyanya kupukutika.',
       recommendedTiming: 'Saa 36 zijazo (Sept 10 - Sept 12). Rejelea umwagiliaji kawaida tarehe 13 Sept.',
       smsBody: 'USHAURI WA INDRADHANU: Ramesh, mvua kubwa (38mm) inatarajiwa kesho. USIMWAGILIE nyanya kwa saa 36. Hairisha kupulizia dawa hadi Ijumaa asubuhi.',
       voiceScript: 'Hujambo mkulima mwenzetu. Huu ni ushauri muhimu kutoka Indradhanu. Katika eneo lako, mvua kubwa ya milimita 38 inakaribia ndani ya saa 24 zijazo. Tafadhali sitisha umwagiliaji mara moja ili kulinda maua ya mazao yako. Asante sana.'
@@ -208,12 +208,12 @@ export const MOCK_DEFAULT_ADVISORY: AIAdvisory = {
   scientificReasoning: [
     'NASA POWER Thermal Heat Index indicates stable air temp (31°C) with sudden convective moisture build-up (Dew point: 23.1°C).',
     'Open-Meteo High Resolution Radar tracks 38.5mm cumulonimbus storm cluster moving from southwest at 18 km/h.',
-    'Soil Physics Model: Black vertisol percolation rate is low; cumulative rain will elevate 10-40cm moisture to 92% (anaerobic root threshold).'
+    'Biophysical Crop Model: Cumulative rainfall forecast will satisfy root hydration; in-situ sensor absent so soil weight reallocated.'
   ],
 
   climateTriggers: [
     { title: 'Rain Probability', value: '82% (38.5 mm)', trend: 'rising', severity: 'critical' },
-    { title: 'Root Zone Moisture', value: '74% (Saturated)', trend: 'rising', severity: 'caution' },
+    { title: 'Soil Sensor Telemetry', value: 'Unavailable (Reallocated)', trend: 'stable', severity: 'normal' },
     { title: 'Evapotranspiration', value: '4.2 mm/day', trend: 'falling', severity: 'normal' },
     { title: 'Wind Gust Window', value: '28 km/h SW', trend: 'rising', severity: 'caution' }
   ],
@@ -262,7 +262,7 @@ export const HISTORICAL_ADVISORIES = [
     adviceType: 'Irrigation & Spray Delay',
     riskLevel: 'WATCH' as const,
     channelDelivered: 'Voice Call + SMS',
-    outcome: 'Verified: 36mm rain arrived. Saved 3,200L water & prevented blossom rot.',
+    outcome: 'Verified: 36mm rain arrived. Prevented root hypoxia & protected blossom retention.',
     status: 'Delivered & Acted Upon'
   },
   {

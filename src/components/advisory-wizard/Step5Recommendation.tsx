@@ -134,8 +134,8 @@ export const Step5Recommendation: React.FC = () => {
   const whyText = liveAdvisory?.why_it_matters || current.why;
   const whenText = liveAdvisory?.recommended_timing || current.when;
   const riskText = liveAdvisory?.risk_if_ignored || current.risk;
-  const impactText = liveAdvisory?.projected_impact || 'Saves ~3,200L irrigation water & protects flower blossoms';
-  const confidenceScore = liveAdvisory?.confidence_pct || 94.0;
+  const impactText = liveAdvisory?.projected_impact || 'Preserves root aeration, prevents flower abortion, and optimizes pumping energy';
+  const confidenceScore = liveAdvisory?.confidence_pct || 92.0;
   const modelVer = liveAdvisory?.model_version || 'rules_v1+gemini-1.5-flash';
 
   return (

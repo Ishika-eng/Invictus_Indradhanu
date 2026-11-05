@@ -6,19 +6,18 @@ import {
   Lightbulb, 
   ArrowRight, 
   ArrowDown, 
-  TrendingUp,
   Sparkles
 } from 'lucide-react';
 import { useAdvisory } from '../../context/AdvisoryContext';
 
 export const ClimateToActionFlow: React.FC = () => {
-  const { selectedLocation, selectedCrop } = useAdvisory();
+  const { selectedLocation, selectedCrop, latestBackendAdvisory } = useAdvisory();
 
   const steps = [
     {
       label: 'WEATHER SIGNAL',
-      sub: `Rain probability ${selectedLocation.rainProbPct}% ↑`,
-      desc: '38mm convective storm approaching in next 24 hours',
+      sub: `Rain probability ${selectedLocation.rainProbPct}%`,
+      desc: 'Precipitation forecast within next 24 to 48 hours via Open-Meteo NWP',
       icon: CloudRain,
       bg: 'bg-skyalt-50 text-skyalt-900 border-skyalt-200',
       iconBg: 'bg-skyalt-600 text-white',
@@ -26,8 +25,8 @@ export const ClimateToActionFlow: React.FC = () => {
     },
     {
       label: 'CLIMATE RISK',
-      sub: 'Waterlogging & Hypoxia ↑',
-      desc: `Soil moisture already at ${selectedLocation.soilMoisturePct}% (saturated)`,
+      sub: 'Waterlogging & Hypoxia Risk',
+      desc: 'In-situ soil probe unavailable; risk evaluated from forecast precipitation & drainage dynamics',
       icon: ShieldAlert,
       bg: 'bg-amber-50 text-amber-950 border-amber-200',
       iconBg: 'bg-amber-600 text-white',
@@ -35,8 +34,8 @@ export const ClimateToActionFlow: React.FC = () => {
     },
     {
       label: 'CROP IMPACT',
-      sub: 'Irrigation Unnecessary',
-      desc: `Flooding will trigger blossom abortion in ${selectedCrop}`,
+      sub: 'Root & Blossom Defense',
+      desc: `Excess standing water triggers blossom drop and root rot in ${selectedCrop}`,
       icon: Sprout,
       bg: 'bg-earth-50 text-earth-950 border-earth-200',
       iconBg: 'bg-earth-600 text-white',
@@ -44,8 +43,8 @@ export const ClimateToActionFlow: React.FC = () => {
     },
     {
       label: 'RECOMMENDED ACTION',
-      sub: 'Delay Irrigation 24h',
-      desc: 'Saves 3,200L water & protects root respiration',
+      sub: latestBackendAdvisory?.immediate_action ? 'Hold Scheduled Irrigation' : 'Optimize Irrigation Schedule',
+      desc: latestBackendAdvisory?.projected_impact || 'Preserves root aeration, prevents nutrient leaching, and optimizes pumping energy',
       icon: Lightbulb,
       bg: 'bg-agri-700 text-white border-agri-600 shadow-soft',
       iconBg: 'bg-white text-agri-900',
@@ -100,16 +99,11 @@ export const ClimateToActionFlow: React.FC = () => {
                     {st.desc}
                   </p>
                 </div>
-
-                <div className="text-[9px] font-mono opacity-60">
-                  Stage {idx + 1} of 4
-                </div>
               </div>
 
-              {/* Arrow divider for desktop */}
               {!isLast && (
-                <div className="hidden md:flex absolute -right-3.5 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-canvas-300 items-center justify-center text-moss-400 shadow-sm">
-                  <ArrowRight className="w-3.5 h-3.5 text-agri-700" />
+                <div className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 z-10 w-4 h-4 rounded-full bg-white border border-canvas-300 items-center justify-center shadow-xs">
+                  <ArrowRight className="w-2.5 h-2.5 text-moss-500" />
                 </div>
               )}
             </div>

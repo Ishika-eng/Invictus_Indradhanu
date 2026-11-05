@@ -150,14 +150,14 @@ export const ClimateHeroCard: React.FC = () => {
         {/* Soil Moisture (Root Zone) */}
         <div className="p-4 rounded-2xl bg-gradient-to-br from-agri-700/60 to-agri-800/80 backdrop-blur-md border border-agri-400/40 col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between text-agri-200 text-xs mb-1">
-            <span className="font-semibold uppercase tracking-wider">Soil Moisture</span>
-            <span className="text-[10px] bg-agri-500/30 px-1.5 py-0.5 rounded text-agri-100 font-mono">10-40cm</span>
+            <span className="font-semibold uppercase tracking-wider">Soil Telemetry</span>
+            <span className="text-[10px] bg-agri-500/30 px-1.5 py-0.5 rounded text-agri-100 font-mono">In-Situ</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-display font-extrabold text-white">
-            {soilDepths[1]?.percentage || 74}%
+          <div className="text-xl sm:text-2xl font-display font-bold text-white">
+            Sensor Offline
           </div>
-          <div className="text-[11px] text-agri-200 mt-1 font-semibold">
-            Status: {soilDepths[1]?.status || 'Saturated'}
+          <div className="text-[11px] text-agri-200 mt-1 font-medium">
+            Weight Reallocated to NWP
           </div>
         </div>
       </div>

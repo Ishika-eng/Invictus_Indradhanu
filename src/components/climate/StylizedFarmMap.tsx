@@ -26,7 +26,7 @@ export const StylizedFarmMap: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-xs text-moss-500 font-mono">
-          <span>Grid Resolution: 10m Sentinel-2</span>
+          <span>Weather Grid: Open-Meteo NWP (~1.1km) • Plot: GPS Coordinates</span>
         </div>
       </div>
 

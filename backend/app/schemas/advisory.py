@@ -10,7 +10,7 @@ class AdvisoryBase(BaseModel):
     why_it_matters: str = Field(..., example="Heavy rain expected tomorrow (84% chance, 25mm). Root zone already at 88% capacity.")
     recommended_timing: str = Field(..., example="Next 24 to 48 hours")
     risk_if_ignored: str = Field(..., example="Waterlogging, root rot, and wasted energy expenditure.")
-    projected_impact: Optional[str] = Field(None, example="Saves ~4,500L water and protects against root asphyxiation.")
+    projected_impact: Optional[str] = Field(None, json_schema_extra={"example": "Conserves irrigation water and pump energy, and protects root aeration."})
     confidence_pct: float = Field(default=94.0, ge=0.0, le=100.0)
     language: str = Field("mr", example="mr")
     status: str = Field("GENERATED", example="GENERATED")

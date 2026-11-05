@@ -157,7 +157,12 @@ class AdvisoryGenerationService:
                     risk_if_ignored="Neglect of routine pest checks may delay early detection.",
                     action_steps=["Scout field boundaries", "Maintain planned cultural practices"],
                     supporting_evidence=["All risk indices below 30.0 (LOW)"],
-                    confidence_pct=95.0,
+                    confidence_pct=AdvisoryRulesEngine.calculate_confidence(
+                        has_current_weather=bool(current_weather),
+                        has_daily_forecast=bool(daily_forecast and len(daily_forecast) > 0),
+                        has_crop_profile=bool(target_crop),
+                        soil_sensor_available=has_sensor,
+                    ),
                 )
             ]
 
