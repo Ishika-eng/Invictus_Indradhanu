@@ -22,17 +22,17 @@ class TemperatureRiskEvaluator:
 
         if temp_max_c <= optimal_max:
             base_score = max(0.0, (temp_max_c / optimal_max) * 20.0)
-            drivers.append(f"Maximum temperature ({temp_max_c:.1f}°C) is within optimal range (<= {optimal_max}°C)")
+            drivers.append(f"Peak forecast daytime temperature ({temp_max_c:.1f}°C) is within optimal range (<= {optimal_max}°C)")
         elif temp_max_c < critical_max:
             # Linear scaling between 30 and 65
             ratio = (temp_max_c - optimal_max) / max(1.0, (critical_max - optimal_max))
             base_score = 30.0 + (ratio * 35.0)
-            drivers.append(f"Maximum temperature ({temp_max_c:.1f}°C) exceeds optimal threshold ({optimal_max}°C)")
+            drivers.append(f"Peak forecast daytime temperature ({temp_max_c:.1f}°C) exceeds optimal threshold ({optimal_max}°C)")
         else:
             # Critical heat threshold exceeded
             excess = temp_max_c - critical_max
             base_score = min(100.0, 70.0 + (excess * 8.0))
-            drivers.append(f"Maximum temperature ({temp_max_c:.1f}°C) exceeds agronomic critical limit ({critical_max}°C)")
+            drivers.append(f"Peak forecast daytime temperature ({temp_max_c:.1f}°C) exceeds agronomic critical limit ({critical_max}°C)")
 
         # Stage specific modifiers
         stage_lower = stage_name.lower()
@@ -49,13 +49,13 @@ class TemperatureRiskEvaluator:
         level = score_to_level(final_score)
 
         if final_score < 30.0:
-            explanation = f"Heat stress for {crop_name} is LOW ({final_score}/100). Peak temperature ({temp_max_c:.1f}°C) is favorable."
+            explanation = f"Heat stress for {crop_name} is LOW ({final_score}/100). Peak forecast daytime temperature ({temp_max_c:.1f}°C) is favorable."
         elif final_score < 60.0:
-            explanation = f"Heat stress for {crop_name} is MODERATE ({final_score}/100). Temperatures are elevated above optimal range."
+            explanation = f"Heat stress for {crop_name} is MODERATE ({final_score}/100). Peak forecast daytime temperature ({temp_max_c:.1f}°C) is elevated above optimal range."
         elif final_score < 80.0:
-            explanation = f"Heat stress for {crop_name} is HIGH ({final_score}/100). Peak temperature ({temp_max_c:.1f}°C) approaches critical limits."
+            explanation = f"Heat stress for {crop_name} is HIGH ({final_score}/100). Peak forecast daytime temperature ({temp_max_c:.1f}°C) approaches critical limits."
         else:
-            explanation = f"Heat stress for {crop_name} is CRITICAL ({final_score}/100). Extreme heat ({temp_max_c:.1f}°C) triggers physiological damage."
+            explanation = f"Heat stress for {crop_name} is CRITICAL ({final_score}/100). Peak forecast daytime temperature ({temp_max_c:.1f}°C) triggers physiological damage."
 
         return CategoryRiskAssessment(
             category_name="Heat Stress",

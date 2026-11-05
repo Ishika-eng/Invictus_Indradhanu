@@ -20,7 +20,12 @@ import {
   MOCK_DEFAULT_ADVISORY, 
   INITIAL_METRICS 
 } from '../data/mockData';
-import { BackendAdvisory, generateFarmAdvisory } from '../services/api';
+import { 
+  BackendAdvisory, 
+  generateFarmAdvisory,
+  CurrentClimateData,
+  fetchFarmCurrentClimate 
+} from '../services/api';
 import { useAuth } from './AuthContext';
 
 export type DemoStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -30,7 +35,9 @@ export interface LocationOption {
   city: string;
   state: string;
   country: string;
-  tempC: number;
+  tempC: number; // 2m Ambient Air Temperature
+  feelsLikeC: number; // Apparent / Feels-like Temperature
+  forecastPeakC: number; // 24h-48h Forecast Peak Max Temperature
   humidityPct: number;
   rainProbPct: number;
   windKmh: number;
@@ -45,6 +52,8 @@ export const PRESET_LOCATIONS: LocationOption[] = [
     state: 'Maharashtra',
     country: 'India',
     tempC: 28,
+    feelsLikeC: 31,
+    forecastPeakC: 30.1,
     humidityPct: 72,
     rainProbPct: 68,
     windKmh: 14,
@@ -57,6 +66,8 @@ export const PRESET_LOCATIONS: LocationOption[] = [
     state: 'Maharashtra',
     country: 'India',
     tempC: 29,
+    feelsLikeC: 32,
+    forecastPeakC: 31.0,
     humidityPct: 75,
     rainProbPct: 78,
     windKmh: 18,
@@ -69,6 +80,8 @@ export const PRESET_LOCATIONS: LocationOption[] = [
     state: 'Andhra Pradesh',
     country: 'India',
     tempC: 32,
+    feelsLikeC: 36,
+    forecastPeakC: 34.5,
     humidityPct: 68,
     rainProbPct: 45,
     windKmh: 12,
@@ -81,6 +94,8 @@ export const PRESET_LOCATIONS: LocationOption[] = [
     state: 'Punjab',
     country: 'India',
     tempC: 34,
+    feelsLikeC: 38,
+    forecastPeakC: 36.0,
     humidityPct: 52,
     rainProbPct: 20,
     windKmh: 10,
@@ -93,6 +108,8 @@ export const PRESET_LOCATIONS: LocationOption[] = [
     state: 'Western Province',
     country: 'Kenya',
     tempC: 26,
+    feelsLikeC: 28,
+    forecastPeakC: 27.5,
     humidityPct: 80,
     rainProbPct: 72,
     windKmh: 16,
@@ -182,6 +199,8 @@ interface AdvisoryContextType {
   addNewFarmer: (farmer: FarmerProfile) => void;
   latestBackendAdvisory: BackendAdvisory | null;
   setLatestBackendAdvisory: (adv: BackendAdvisory | null) => void;
+  currentClimate: CurrentClimateData | null;
+  setCurrentClimate: (data: CurrentClimateData | null) => void;
 }
 
 const AdvisoryContext = createContext<AdvisoryContextType | undefined>(undefined);
@@ -226,6 +245,7 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [selectedFarmer, setSelectedFarmer] = useState<FarmerProfile>(SAMPLE_FARMERS[0]);
   const [activeAdvisory, setActiveAdvisory] = useState<AIAdvisory>(MOCK_DEFAULT_ADVISORY);
   const [latestBackendAdvisory, setLatestBackendAdvisory] = useState<BackendAdvisory | null>(null);
+  const [currentClimate, setCurrentClimate] = useState<CurrentClimateData | null>(null);
   const [metrics, setMetrics] = useState<MetricSummary>(INITIAL_METRICS);
 
   const togglePresentationMode = () => {
@@ -260,6 +280,15 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
             return null;
           })
         : Promise.resolve(null);
+
+      // Concurrently synchronize live climate observation snapshot if not yet loaded
+      if (selectedFarm?.id && session?.access_token) {
+        fetchFarmCurrentClimate(selectedFarm.id, session.access_token)
+          .then(clim => {
+            if (clim) setCurrentClimate(clim);
+          })
+          .catch(err => console.warn('Weather sync in AI processing:', err));
+      }
 
       // Stage 0: Satellite & sensor telemetry
       setProcessingStageIndex(0);
@@ -376,6 +405,8 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
       addNewFarmer,
       latestBackendAdvisory,
       setLatestBackendAdvisory,
+      currentClimate,
+      setCurrentClimate,
     }}>
       {children}
     </AdvisoryContext.Provider>

@@ -40,6 +40,21 @@ export const ClimateRiskMatrix: React.FC = () => {
   const scores = riskData?.category_scores;
   const categories = riskData?.categories;
 
+  // Baseline category scores derived from selectedLocation to remain strictly consistent with ClimateRiskScoreCard
+  const baselineRainScore = selectedLocation.rainProbPct >= 65 
+    ? Math.min(100, Math.round(65 + (selectedLocation.rainProbPct - 65) * 1.5))
+    : selectedLocation.rainProbPct >= 40 ? 45 : 20;
+  const baselineHeatScore = selectedLocation.tempC >= 35 
+    ? Math.min(100, Math.round(60 + (selectedLocation.tempC - 35) * 5))
+    : selectedLocation.tempC >= 30 ? 30 : 10;
+  const baselineDiseaseScore = selectedLocation.humidityPct >= 75 && selectedLocation.tempC >= 20 ? 65 : 25;
+  const baselineWindScore = selectedLocation.windKmh >= 25 ? 70 : selectedLocation.windKmh >= 15 ? 35 : 15;
+
+  const currentRainfallScore = scores?.rainfall ?? baselineRainScore;
+  const currentDiseaseScore = scores?.disease ?? baselineDiseaseScore;
+  const currentHeatScore = scores?.heat ?? baselineHeatScore;
+  const currentWindScore = scores?.wind ?? baselineWindScore;
+
   // Build dynamic triggers from backend categories or fallback
   const rainItem = categories?.rainfall_waterlogging;
   const diseaseItem = categories?.humidity_disease;
@@ -56,32 +71,32 @@ export const ClimateRiskMatrix: React.FC = () => {
   const riskTriggers = [
     {
       title: 'Convective Rain & Waterlogging',
-      value: `${scores ? scores.rainfall + '/100' : '82% Probability'}`,
-      severity: getSeverity(scores?.rainfall ?? 78),
+      value: `${currentRainfallScore}/100 (${selectedLocation.rainProbPct}% chance)`,
+      severity: getSeverity(currentRainfallScore),
       desc: rainItem?.explanation || 'Severe root hypoxia & blossom drop risk if flooded during vegetative canopy growth.',
       icon: CloudRain,
       driver: rainItem?.driver_factors?.[0],
     },
     {
       title: 'Fungal Blight & Spore Incubation',
-      value: `${scores ? scores.disease + '/100' : 'High Spore Index'}`,
-      severity: getSeverity(scores?.disease ?? 65),
+      value: `${currentDiseaseScore}/100 (${selectedLocation.humidityPct}% RH)`,
+      severity: getSeverity(currentDiseaseScore),
       desc: diseaseItem?.explanation || 'High relative humidity combined with warm temperatures accelerates pathogen germination.',
       icon: Bug,
       driver: diseaseItem?.driver_factors?.[0],
     },
     {
       title: 'Heat Stress / Thermal Shock',
-      value: `${scores ? scores.heat + '/100' : '31.4°C Air'}`,
-      severity: getSeverity(scores?.heat ?? 32),
+      value: `${currentHeatScore}/100 (Peak ${selectedLocation.forecastPeakC}°C)`,
+      severity: getSeverity(currentHeatScore),
       desc: heatItem?.explanation || 'Temperature remains within safe agronomic parameters for current growth phase.',
       icon: ThermometerSnowflake,
       driver: heatItem?.driver_factors?.[0],
     },
     {
       title: 'Wind Gust & Lodging Hazard',
-      value: `${scores ? scores.wind + '/100' : '18 km/h Sustained'}`,
-      severity: getSeverity(scores?.wind ?? 28),
+      value: `${currentWindScore}/100 (${selectedLocation.windKmh} km/h)`,
+      severity: getSeverity(currentWindScore),
       desc: windItem?.explanation || 'Foliar spray drift hazard; spray operations should only be executed in calm conditions.',
       icon: Wind,
       driver: windItem?.driver_factors?.[0],

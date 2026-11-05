@@ -155,7 +155,7 @@ class AdvisoryRulesEngine:
                 priority=2,
                 immediate_action=f"Apply light, cooling drip irrigation during early morning hours.",
                 why_it_matters=(
-                    f"Ambient temperatures are forecast to reach {max_forecast_temp:.1f}°C, exceeding optimal limits for {crop_name}. "
+                    f"Ambient temperatures are forecast to reach peak {max_forecast_temp:.1f}°C, exceeding optimal limits for {crop_name}. "
                     f"Early morning irrigation cools the root zone and prevents flower abortion or terminal heat stress."
                 ),
                 recommended_timing="Tomorrow morning between 5:30 AM and 8:30 AM (before sun peaks)",
@@ -167,7 +167,7 @@ class AdvisoryRulesEngine:
                     "If mulching is present, check that moisture penetrates through to the root zone."
                 ],
                 supporting_evidence=[
-                    f"Peak forecast temperature: {max_forecast_temp:.1f}°C",
+                    f"24h Peak Forecast Temperature: {max_forecast_temp:.1f}°C",
                     f"Heat stress index: {heat_risk:.1f}/100",
                     f"Zero significant rainfall forecast ({next_24h_rain:.1f} mm)",
                 ],
@@ -191,7 +191,7 @@ class AdvisoryRulesEngine:
                     "Check soil moisture by hand at 10cm depth before initiating pumping."
                 ],
                 supporting_evidence=[
-                    f"Current temperature: {t_current:.1f}°C (Optimal)",
+                    f"2m Ambient Air Temperature: {t_current:.1f}°C (Optimal)",
                     f"Rainfall forecast: {next_24h_rain:.1f} mm",
                 ],
                 data_limitations=soil_limitation,
@@ -237,7 +237,7 @@ class AdvisoryRulesEngine:
                 priority=2,
                 immediate_action="Inspect crop canopy for fungal symptoms and prepare preventive biological spray.",
                 why_it_matters=(
-                    f"Prolonged high humidity ({humidity:.0f}%) and moderate temperature ({t_current:.1f}°C) create an ideal microclimate "
+                    f"Prolonged high humidity ({humidity:.0f}%) and moderate 2m ambient temperature ({t_current:.1f}°C) create an ideal microclimate "
                     f"for fungal spore germination and foliar blight in {crop_name}."
                 ),
                 recommended_timing="Tomorrow morning between 6:30 AM and 9:00 AM (under calm wind)",
@@ -251,7 +251,7 @@ class AdvisoryRulesEngine:
                 ],
                 supporting_evidence=[
                     f"Relative humidity: {humidity:.1f}%",
-                    f"Pathogen incubation temperature: {t_current:.1f}°C",
+                    f"2m Ambient Air Temperature: {t_current:.1f}°C (Pathogen Incubation Window)",
                     f"Disease vulnerability score: {disease_risk:.1f}/100",
                 ],
                 data_limitations=None,

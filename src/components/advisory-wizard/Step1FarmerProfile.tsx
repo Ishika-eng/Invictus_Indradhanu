@@ -103,6 +103,8 @@ export const Step1FarmerProfile: React.FC = () => {
           state: farmer.state,
           country: farmer.country,
           tempC: 28,
+          feelsLikeC: 31,
+          forecastPeakC: 30.1,
           humidityPct: 72,
           rainProbPct: 68,
           windKmh: 14,

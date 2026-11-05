@@ -87,11 +87,11 @@ export const StylizedFarmMap: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="bg-moss-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-agri-500/30 text-[10px] text-agri-200 flex items-center gap-2">
               <CloudRain className="w-3.5 h-3.5 text-skyalt-300" />
-              <span>Rain Probability: <strong>{selectedLocation.rainProbPct}%</strong> ({selectedLocation.tempC}°C)</span>
+              <span>Rain Probability: <strong>{selectedLocation.rainProbPct}%</strong> (2m Air: {selectedLocation.tempC}°C)</span>
             </div>
 
             <span className="text-[10px] font-mono text-moss-400 bg-moss-950/80 px-2 py-1 rounded-lg border border-moss-800">
-              Micro-Zone Live
+              NWP Grid Cell
             </span>
           </div>
         </div>

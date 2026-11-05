@@ -71,13 +71,23 @@ export const ClimateRiskScoreCard: React.FC = () => {
   const baselineDiseaseScore = selectedLocation.humidityPct >= 75 && selectedLocation.tempC >= 20 ? 65 : 25;
   const baselineWindScore = selectedLocation.windKmh >= 25 ? 70 : selectedLocation.windKmh >= 15 ? 35 : 15;
 
+  // Category scores (never invent soil moisture)
+  const categoryScores = riskData?.category_scores;
+  const rainfallScore = categoryScores?.rainfall ?? baselineRainScore;
+  const heatScore = categoryScores?.heat ?? baselineHeatScore;
+  const coldScore = categoryScores?.cold ?? baselineColdScore;
+  const diseaseScore = categoryScores?.disease ?? baselineDiseaseScore;
+  const windScore = categoryScores?.wind ?? baselineWindScore;
+  const soilScore = categoryScores?.soil_moisture ?? null;
+
   // Composite risk calculation without soil moisture (weights: rain 0.35, heat 0.25, cold 0.15, disease 0.15, wind 0.10)
+  // Backend is the single source of truth; in offline/fallback mode, composite strictly equals reallocated category sum
   const calculatedBaselineScore = Math.min(100, Math.max(0, Math.round(
-    (baselineRainScore * 0.35) + 
-    (baselineHeatScore * 0.25) + 
-    (baselineColdScore * 0.15) + 
-    (baselineDiseaseScore * 0.15) + 
-    (baselineWindScore * 0.10)
+    (rainfallScore * 0.35) + 
+    (heatScore * 0.25) + 
+    (coldScore * 0.15) + 
+    (diseaseScore * 0.15) + 
+    (windScore * 0.10)
   )));
 
   const overallScore = riskData?.overall_risk_score ?? calculatedBaselineScore;
@@ -99,15 +109,6 @@ export const ClimateRiskScoreCard: React.FC = () => {
   };
 
   const levelStyles = getLevelColor(overallLevel);
-
-  // Category scores (never invent soil moisture)
-  const categoryScores = riskData?.category_scores;
-  const rainfallScore = categoryScores?.rainfall ?? baselineRainScore;
-  const heatScore = categoryScores?.heat ?? baselineHeatScore;
-  const coldScore = categoryScores?.cold ?? baselineColdScore;
-  const diseaseScore = categoryScores?.disease ?? baselineDiseaseScore;
-  const windScore = categoryScores?.wind ?? baselineWindScore;
-  const soilScore = categoryScores?.soil_moisture ?? null;
 
   const categories = [
     {
@@ -157,7 +158,7 @@ export const ClimateRiskScoreCard: React.FC = () => {
 
   const timestampDisplay = riskData?.assessment_timestamp
     ? new Date(riskData.assessment_timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : 'Live Observation';
+    : 'NWP Forecast Calculation';
 
   return (
     <div className="rounded-3xl bg-white border border-canvas-300 shadow-soft p-5 sm:p-6 space-y-4 flex flex-col justify-between">

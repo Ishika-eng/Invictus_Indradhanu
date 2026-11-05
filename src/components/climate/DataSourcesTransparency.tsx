@@ -14,24 +14,24 @@ export const DataSourcesTransparency: React.FC = () => {
     {
       name: 'Open-Meteo',
       type: 'High-Res Numerical Weather Grid (0.05° resolution)',
-      status: 'LIVE NWP',
-      lastSync: 'Real-Time Sync (<30m TTL)',
+      status: 'LIVE NWP MODEL',
+      lastSync: 'NWP Grid Sync (<30m TTL)',
       icon: Satellite,
       color: 'text-skyalt-600 bg-skyalt-50 border-skyalt-200'
     },
     {
       name: 'NASA POWER',
       type: 'Solar Radiation & Agro-Climatology Daily Time-Series',
-      status: 'LIVE ARCHIVE',
-      lastSync: 'Daily Archive Sync',
+      status: 'DAILY ARCHIVE',
+      lastSync: 'Agro-Climatology Daily Sync',
       icon: Database,
       color: 'text-agri-600 bg-agri-50 border-agri-200'
     },
     {
       name: 'In-Situ IoT Soil Probe',
       type: 'Capacitive / FDR Ground Telemetry (0-40cm depth)',
-      status: 'AWAITING PROBE',
-      lastSync: 'No Fake Data Allowed',
+      status: 'PROBE OFFLINE',
+      lastSync: 'Sensor Not Deployed on Plot',
       icon: Radio,
       color: 'text-earth-600 bg-earth-50 border-earth-200'
     },
@@ -39,7 +39,7 @@ export const DataSourcesTransparency: React.FC = () => {
       name: 'Thermal GDD Engine',
       type: 'Crop-Specific Growing Degree Day Heat Unit Accumulation',
       status: 'ACTIVE MODEL',
-      lastSync: 'Dynamic Thermal Calc',
+      lastSync: 'Biophysical Thermal Calc',
       icon: Cpu,
       color: 'text-moss-700 bg-canvas-200 border-canvas-300'
     },
@@ -59,14 +59,14 @@ export const DataSourcesTransparency: React.FC = () => {
 
         <div className="flex items-center gap-1.5 text-xs text-agri-800 font-semibold bg-agri-50 px-2.5 py-1 rounded-xl border border-agri-200 self-start sm:self-auto">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span>Real-Time Ingestion</span>
+          <span>Multi-Source Meteorological Pipeline</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {sources.map((src) => {
           const Icon = src.icon;
-          const isAwaiting = src.status === 'AWAITING PROBE';
+          const isAwaiting = src.status === 'PROBE OFFLINE';
 
           return (
             <div

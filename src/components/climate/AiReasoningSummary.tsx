@@ -9,7 +9,11 @@ import {
 import { useAdvisory } from '../../context/AdvisoryContext';
 
 export const AiReasoningSummary: React.FC = () => {
-  const { selectedLocation, selectedCrop, latestBackendAdvisory } = useAdvisory();
+  const { selectedLocation, selectedCrop, latestBackendAdvisory, currentClimate } = useAdvisory();
+
+  const ambientTemp = currentClimate ? currentClimate.current.temperature_c : selectedLocation.tempC;
+  const feelsLikeTemp = currentClimate ? currentClimate.current.feels_like_c : selectedLocation.feelsLikeC;
+  const forecastPeakTemp = selectedLocation.forecastPeakC;
 
   const reasons = [
     { 
@@ -22,7 +26,7 @@ export const AiReasoningSummary: React.FC = () => {
     },
     { 
       type: 'positive', 
-      text: `Ambient temperature (${selectedLocation.tempC}°C) evaluated against ${selectedCrop} phenological stress thresholds` 
+      text: `2m Ambient air temperature (${ambientTemp}°C, Feels like ${feelsLikeTemp}°C, 24h Forecast Peak ${forecastPeakTemp}°C) evaluated against ${selectedCrop} phenological stress thresholds` 
     },
     { 
       type: 'warning', 

@@ -33,10 +33,10 @@ class HumidityDiseaseRiskEvaluator:
         # Thermal comfort zone for major agricultural pathogens: 18°C to 28°C
         if 18.0 <= temperature_c <= 28.0:
             base_score += 25.0
-            drivers.append(f"Ambient temperature ({temperature_c:.1f}°C) lies directly within optimal pathogen incubation range (18-28°C)")
+            drivers.append(f"2m Ambient air temperature ({temperature_c:.1f}°C) lies directly within optimal pathogen incubation range (18-28°C)")
         elif temperature_c > 35.0 or temperature_c < 12.0:
             base_score = max(0.0, base_score - 15.0)
-            drivers.append(f"Temperature extremes ({temperature_c:.1f}°C) inhibit standard fungal proliferation")
+            drivers.append(f"2m Ambient air temperature extreme ({temperature_c:.1f}°C) inhibits standard fungal proliferation")
 
         # Moisture presence
         if precipitation_mm > 5.0:

@@ -18,13 +18,20 @@ import { useAuth } from '../../context/AuthContext';
 import { fetchFarmCurrentClimate, refreshFarmClimate, CurrentClimateData } from '../../services/api';
 
 export const LiveClimateCard: React.FC = () => {
-  const { selectedLocation, selectedCrop } = useAdvisory();
+  const { selectedLocation, selectedCrop, currentClimate, setCurrentClimate } = useAdvisory();
   const { selectedFarm, session } = useAuth();
 
-  const [liveClimate, setLiveClimate] = useState<CurrentClimateData | null>(null);
+  const [liveClimate, setLiveClimate] = useState<CurrentClimateData | null>(currentClimate);
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(currentClimate?.last_updated || null);
+
+  useEffect(() => {
+    if (currentClimate) {
+      setLiveClimate(currentClimate);
+      setLastRefreshedAt(currentClimate.last_updated);
+    }
+  }, [currentClimate]);
 
   useEffect(() => {
     let mounted = true;
@@ -35,6 +42,7 @@ export const LiveClimateCard: React.FC = () => {
         const data = await fetchFarmCurrentClimate(selectedFarm.id, session.access_token);
         if (mounted) {
           setLiveClimate(data);
+          setCurrentClimate(data);
           setLastRefreshedAt(data.last_updated);
         }
       } catch (err) {
@@ -46,7 +54,7 @@ export const LiveClimateCard: React.FC = () => {
 
     loadCurrentWeather();
     return () => { mounted = false; };
-  }, [selectedFarm?.id, session?.access_token]);
+  }, [selectedFarm?.id, session?.access_token, setCurrentClimate]);
 
   const handleManualRefresh = async () => {
     if (!selectedFarm?.id || !session?.access_token) return;
@@ -55,6 +63,7 @@ export const LiveClimateCard: React.FC = () => {
       await refreshFarmClimate(selectedFarm.id, session.access_token);
       const data = await fetchFarmCurrentClimate(selectedFarm.id, session.access_token);
       setLiveClimate(data);
+      setCurrentClimate(data);
       setLastRefreshedAt(data.last_updated);
     } catch (err) {
       console.warn('Climate refresh error:', err);
@@ -65,7 +74,7 @@ export const LiveClimateCard: React.FC = () => {
 
   // Values from live API or preset fallback
   const tempC = liveClimate ? liveClimate.current.temperature_c : selectedLocation.tempC;
-  const feelsLikeC = liveClimate ? liveClimate.current.feels_like_c : selectedLocation.tempC + 3;
+  const feelsLikeC = liveClimate ? liveClimate.current.feels_like_c : selectedLocation.feelsLikeC;
   const rainProb = liveClimate ? liveClimate.current.rain_probability_pct : selectedLocation.rainProbPct;
   const precipMm = liveClimate ? liveClimate.current.precipitation_mm : 38;
   const humidity = liveClimate ? liveClimate.current.relative_humidity_pct : selectedLocation.humidityPct;
@@ -73,7 +82,7 @@ export const LiveClimateCard: React.FC = () => {
   const windDir = liveClimate ? liveClimate.current.wind_direction_deg : 210;
   const condition = liveClimate ? liveClimate.current.weather_condition : (rainProb > 50 ? 'Convective Rain Front Expected' : 'Clear / Mild Humidity');
   const weatherIcon = liveClimate ? liveClimate.current.weather_icon : (rainProb > 50 ? '🌧️' : '☀️');
-  const dataSource = liveClimate ? liveClimate.data_source : 'NWP Synthetic Baseline';
+  const dataSource = liveClimate ? liveClimate.data_source : 'Open-Meteo NWP Grid Analysis';
   const locationLabel = selectedFarm ? `${selectedFarm.name} (${selectedLocation.city})` : `${selectedLocation.city}, ${selectedLocation.state}`;
 
   const isRainy = rainProb > 50;
@@ -120,7 +129,7 @@ export const LiveClimateCard: React.FC = () => {
               </h3>
               <span className="text-[10px] font-mono uppercase bg-agri-600/50 text-agri-200 px-2 py-0.5 rounded border border-agri-400/30 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live NWP Telemetry
+                Open-Meteo NWP Grid
               </span>
             </div>
             <p className="text-xs text-moss-400 mt-0.5">
@@ -161,7 +170,7 @@ export const LiveClimateCard: React.FC = () => {
         {/* Temperature Card */}
         <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-agri-300 font-semibold uppercase">
-            <span>Air Temp</span>
+            <span>2m Ambient Air Temp</span>
             <Thermometer className="w-4 h-4 text-earth-300" />
           </div>
           <div className="my-1.5">
@@ -169,7 +178,7 @@ export const LiveClimateCard: React.FC = () => {
               {tempC}°C
             </span>
           </div>
-          <span className="text-[10px] text-canvas-300">Feels like {feelsLikeC}°C</span>
+          <span className="text-[10px] text-canvas-300">Apparent / Feels like {feelsLikeC}°C</span>
         </div>
 
         {/* Rain Probability */}
