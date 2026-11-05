@@ -120,3 +120,4 @@ async def test_cors_rejects_unauthorized_external_origin():
         )
         # Starlette returns 400 for disallowed CORS preflight and does not set allow-origin
         assert res.headers.get("access-control-allow-origin") != "http://malicious-website.example.com"
+
