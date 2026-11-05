@@ -20,6 +20,9 @@ import {
 import { useAdvisory, PRESET_LOCATIONS, LocationOption } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { Language } from '../../types/advisory';
+import { normalizePhoneNumber } from '../../utils/phone';
+
+export { normalizePhoneNumber };
 
 export const Step1FarmerProfile: React.FC = () => {
   const { 
@@ -83,12 +86,25 @@ export const Step1FarmerProfile: React.FC = () => {
 
   // Sync state if farmer is logged in and registered
   useEffect(() => {
-    if (user?.phone) {
-      setRegPhone(user.phone);
-    } else if (user?.user_metadata?.phone_number) {
-      setRegPhone(user.user_metadata.phone_number);
+    const defaultPhone = user?.phone || user?.user_metadata?.phone_number;
+    if (defaultPhone && !regPhone) {
+      setRegPhone(defaultPhone);
     }
   }, [user]);
+
+  const handlePhoneChange = (newPhone: string) => {
+    setRegPhone(newPhone);
+    if (regError) {
+      setRegError(null);
+    }
+  };
+
+  const handleFieldChange = (setter: React.Dispatch<React.SetStateAction<any>>, value: any) => {
+    setter(value);
+    if (regError) {
+      setRegError(null);
+    }
+  };
 
   useEffect(() => {
     if (farmer) {
@@ -145,28 +161,32 @@ export const Step1FarmerProfile: React.FC = () => {
 
   const handleCompleteRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmittingReg(true);
     setRegError(null);
+    setIsSubmittingReg(true);
 
-    const contactPhone = regPhone.trim() || user?.phone || user?.user_metadata?.phone_number;
-    if (!contactPhone) {
+    const rawInput = regPhone.trim();
+    if (!rawInput) {
       setRegError('Please provide a contact phone number for climate advisory dispatches.');
       setIsSubmittingReg(false);
       return;
     }
 
-    const formattedPhone = contactPhone.startsWith('+')
-      ? contactPhone
-      : `+91${contactPhone.replace(/\D/g, '')}`;
+    const formattedPhone = normalizePhoneNumber(rawInput);
+    const cleanDigits = formattedPhone.replace(/\D/g, '');
+    if (cleanDigits.length < 10 || cleanDigits.length > 15) {
+      setRegError('Please provide a valid 10-15 digit mobile phone number.');
+      setIsSubmittingReg(false);
+      return;
+    }
 
     const result = await registerNewFarmer({
-      full_name: regFullName,
+      full_name: regFullName.trim(),
       phone_number: formattedPhone,
       preferred_language: regLanguage,
-      village: regVillage,
-      district: regDistrict,
-      state: regState,
-      farm_name: regFarmName,
+      village: regVillage.trim(),
+      district: regDistrict.trim(),
+      state: regState.trim(),
+      farm_name: regFarmName.trim(),
       farm_acreage: Number(regAcreage),
       soil_type: regSoilType,
       irrigation_source: regIrrigation,
@@ -178,7 +198,7 @@ export const Step1FarmerProfile: React.FC = () => {
     if (!result.success) {
       setRegError(result.error || 'Registration failed');
     } else {
-      setFarmerName(regFullName);
+      setFarmerName(regFullName.trim());
       setFarmerPhone(formattedPhone);
       setSelectedLanguage(regLanguage);
       await refreshProfile();
@@ -267,7 +287,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 <input
                   type="text"
                   value={regFullName}
-                  onChange={(e) => setRegFullName(e.target.value)}
+                  onChange={(e) => handleFieldChange(setRegFullName, e.target.value)}
                   placeholder="e.g. Ramesh Patil"
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600"
@@ -281,7 +301,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 <input
                   type="tel"
                   value={regPhone}
-                  onChange={(e) => setRegPhone(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   placeholder="+91 98765 43210"
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600 font-mono"
@@ -312,7 +332,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 <input
                   type="text"
                   value={regVillage}
-                  onChange={(e) => setRegVillage(e.target.value)}
+                  onChange={(e) => handleFieldChange(setRegVillage, e.target.value)}
                   placeholder="e.g. Baramati"
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600"
@@ -326,7 +346,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 <input
                   type="text"
                   value={regDistrict}
-                  onChange={(e) => setRegDistrict(e.target.value)}
+                  onChange={(e) => handleFieldChange(setRegDistrict, e.target.value)}
                   placeholder="e.g. Pune"
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600"
@@ -340,7 +360,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 <input
                   type="text"
                   value={regState}
-                  onChange={(e) => setRegState(e.target.value)}
+                  onChange={(e) => handleFieldChange(setRegState, e.target.value)}
                   placeholder="e.g. Maharashtra"
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-canvas-100 border border-canvas-300 text-xs font-bold text-moss-900 focus:outline-none focus:border-agri-600"
