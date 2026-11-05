@@ -53,14 +53,65 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
-origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS]
+# CORS Middleware Configuration
+# Guarantees http://localhost:3000 and all development & production origins are explicitly allowed
+cors_origins: list[str] = (
+    list(settings.CORS_ORIGINS)
+    if isinstance(settings.CORS_ORIGINS, list)
+    else [str(settings.CORS_ORIGINS)]
+)
+# Ensure http://localhost:3000 is always present and clean
+clean_origins: list[str] = []
+for orig in cors_origins:
+    norm = str(orig).strip().strip("'\"").rstrip("/")
+    if norm and norm not in clean_origins and norm != "*":  # Never use wildcard with credentials=True
+        clean_origins.append(norm)
+
+if "http://localhost:3000" not in clean_origins:
+    clean_origins.insert(0, "http://localhost:3000")
+
+ALLOWED_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+    "HEAD",
+]
+
+ALLOWED_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "Origin",
+    "User-Agent",
+    "DNT",
+    "Cache-Control",
+    "X-Mx-ReqToken",
+    "Keep-Alive",
+    "X-Requested-With",
+    "If-Modified-Since",
+    "X-Admin-Role",
+    "X-Admin-Key",
+    "*",
+]
+
+EXPOSED_HEADERS = [
+    "Content-Length",
+    "Content-Range",
+    "Authorization",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=clean_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=ALLOWED_METHODS,
+    allow_headers=ALLOWED_HEADERS,
+    expose_headers=EXPOSED_HEADERS,
+    max_age=86400,
 )
 
 # Centralized Exception Handlers

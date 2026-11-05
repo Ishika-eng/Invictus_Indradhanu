@@ -28,16 +28,55 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://localhost:19006",
+        "http://127.0.0.1:19006",
     ]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",") if i.strip()]
-        elif isinstance(v, (list, str)):
-            return v  # type: ignore
-        raise ValueError(v)
+        default_origins = [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
+            "http://localhost:19006",
+            "http://127.0.0.1:19006",
+        ]
+        if isinstance(v, str):
+            v_str = v.strip()
+            # If JSON array string like '["http://localhost:3000"]'
+            if v_str.startswith("[") and v_str.endswith("]"):
+                import json
+                try:
+                    parsed = json.loads(v_str)
+                    if isinstance(parsed, list):
+                        v = parsed
+                except Exception:
+                    pass
+            if isinstance(v, str):
+                items = [i.strip().strip("'\"").rstrip("/") for i in v_str.split(",") if i.strip()]
+                for o in default_origins:
+                    if o not in items:
+                        items.append(o)
+                return items
+
+        if isinstance(v, list):
+            items = [str(i).strip().strip("'\"").rstrip("/") for i in v if str(i).strip()]
+            for o in default_origins:
+                if o not in items:
+                    items.append(o)
+            return items
+
+        return default_origins
 
     # Database Settings
     # Default to SQLite for seamless local development & tests if PostgreSQL is not specified
