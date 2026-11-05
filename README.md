@@ -86,9 +86,15 @@ cp .env.example .env
 # If connecting to your Supabase PostgreSQL database, fill in the DATABASE_URL and SUPABASE_JWT_SECRET in .env.
 
 # 5. Run database migrations
+# Windows (PowerShell):
+.\venv\Scripts\alembic upgrade head
+# Linux / macOS or activated venv:
 alembic upgrade head
 
 # 6. Start the FastAPI development server
+# Windows (PowerShell):
+.\venv\Scripts\uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Linux / macOS or activated venv:
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
