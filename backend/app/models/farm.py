@@ -71,16 +71,14 @@ class Farm(Base, TimestampMixin):
         "ClimateObservation",
         back_populates="farm",
         cascade="all, delete-orphan",
-        lazy="selectin",
     )
     risk_assessments: Mapped[List["RiskAssessment"]] = relationship(
         "RiskAssessment",
         back_populates="farm",
         cascade="all, delete-orphan",
-        lazy="selectin",
     )
     advisories: Mapped[List["Advisory"]] = relationship(
-        "Advisory", back_populates="farm", cascade="all, delete-orphan", lazy="selectin"
+        "Advisory", back_populates="farm", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

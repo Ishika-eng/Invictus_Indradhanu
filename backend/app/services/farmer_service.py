@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -34,21 +34,19 @@ class FarmerService:
         return farmer
 
     @staticmethod
-    async def get_by_phone(db: AsyncSession, phone: str) -> Optional[Farmer]:
-        result = await db.execute(
-            select(Farmer)
-            .options(selectinload(Farmer.farms))
-            .where(Farmer.phone_number == phone)
-        )
+    async def get_by_phone(db: AsyncSession, phone: str, load_farms: bool = True) -> Optional[Farmer]:
+        stmt = select(Farmer).where(Farmer.phone_number == phone)
+        if load_farms:
+            stmt = stmt.options(selectinload(Farmer.farms))
+        result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_by_email(db: AsyncSession, email: str) -> Optional[Farmer]:
-        result = await db.execute(
-            select(Farmer)
-            .options(selectinload(Farmer.farms))
-            .where(Farmer.email == email.strip().lower())
-        )
+    async def get_by_email(db: AsyncSession, email: str, load_farms: bool = True) -> Optional[Farmer]:
+        stmt = select(Farmer).where(Farmer.email == email.strip().lower())
+        if load_farms:
+            stmt = stmt.options(selectinload(Farmer.farms))
+        result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -64,7 +62,7 @@ class FarmerService:
 
     @staticmethod
     async def create(db: AsyncSession, data: FarmerCreate) -> Farmer:
-        existing = await FarmerService.get_by_phone(db, data.phone_number)
+        existing = await FarmerService.get_by_phone(db, data.phone_number, load_farms=False)
         if existing:
             raise DuplicateEntityException(
                 f"Farmer with phone '{data.phone_number}' already registered"
@@ -82,14 +80,11 @@ class FarmerService:
         supabase_user: SupabaseUser,
         data: FarmerRegistrationRequest,
     ) -> Farmer:
-        """Atomically registers a farmer linked to a Supabase user and provisions their first farm."""
-        # Check if this Supabase user already has a farmer registered
-        existing_by_sub = await FarmerService.get_by_supabase_id(db, supabase_user.user_id)
-        if existing_by_sub:
-            raise DuplicateEntityException(
-                f"Account is already registered as farmer '{existing_by_sub.full_name}'"
-            )
-
+        """Atomically registers or updates a farmer linked to a Supabase user and provisions their initial farm.
+        
+        Idempotent: If the farmer is already registered with the same Supabase account, returns and updates
+        the profile rather than failing with 409 Conflict.
+        """
         # Phone priority: verified phone from Supabase JWT auth token, otherwise registration payload
         phone = supabase_user.phone or (data.phone_number.strip() if getattr(data, "phone_number", None) else None)
         if not phone:
@@ -107,72 +102,110 @@ class FarmerService:
         if email:
             email = email.strip().lower()
 
-        # Check for email conflicts against existing registered accounts
+        # 1. Check if this Supabase user already has a farmer registered (Idempotent update flow)
+        existing_by_sub = await FarmerService.get_by_supabase_id(db, supabase_user.user_id)
+        if existing_by_sub:
+            # If phone is changing, ensure new phone does not belong to another account
+            if phone != existing_by_sub.phone_number:
+                other_phone = await FarmerService.get_by_phone(db, phone, load_farms=False)
+                if other_phone and other_phone.id != existing_by_sub.id:
+                    raise DuplicateEntityException(
+                        f"Farmer with phone '{phone}' is already registered with another account. Please use a different contact phone number."
+                    )
+                existing_by_sub.phone_number = phone
+
+            # If email is changing, ensure new email does not belong to another account
+            if email and email != existing_by_sub.email:
+                other_email = await FarmerService.get_by_email(db, email, load_farms=False)
+                if other_email and other_email.id != existing_by_sub.id:
+                    raise DuplicateEntityException(
+                        f"Farmer with email '{email}' is already registered with another account. Please use a different email address."
+                    )
+                existing_by_sub.email = email
+
+            existing_by_sub.full_name = data.full_name
+            existing_by_sub.preferred_language = data.preferred_language
+            existing_by_sub.village = data.village
+            existing_by_sub.district = data.district
+            existing_by_sub.state = data.state
+            existing_by_sub.country = data.country
+
+            # Prevent duplicate initial farm plot if one already exists
+            if not existing_by_sub.farms:
+                farm = Farm(
+                    farmer_id=existing_by_sub.id,
+                    name=data.farm_name,
+                    latitude=data.latitude,
+                    longitude=data.longitude,
+                    location_geom=f"SRID=4326;POINT({data.longitude} {data.latitude})",
+                    acreage=data.farm_acreage,
+                    soil_type=data.soil_type,
+                    irrigation_source=data.irrigation_source,
+                    elevation_meters=data.elevation_meters,
+                    micro_zone_name=f"{data.village} Zone ({round(data.latitude, 2)}N, {round(data.longitude, 2)}E)",
+                )
+                db.add(farm)
+            else:
+                main_farm = existing_by_sub.farms[0]
+                main_farm.name = data.farm_name
+                main_farm.latitude = data.latitude
+                main_farm.longitude = data.longitude
+                main_farm.location_geom = f"SRID=4326;POINT({data.longitude} {data.latitude})"
+                main_farm.acreage = data.farm_acreage
+                main_farm.soil_type = data.soil_type
+                main_farm.irrigation_source = data.irrigation_source
+                main_farm.elevation_meters = data.elevation_meters
+                main_farm.micro_zone_name = f"{data.village} Zone ({round(data.latitude, 2)}N, {round(data.longitude, 2)}E)"
+
+            await db.commit()
+            await db.refresh(existing_by_sub)
+            return existing_by_sub
+
+        # 2. Check for conflicts by phone or email in a single optimized query
         emails_to_check = set()
         if supabase_user.email:
             emails_to_check.add(supabase_user.email.strip().lower())
         if getattr(data, "email", None) and data.email.strip():
             emails_to_check.add(data.email.strip().lower())
 
-        for check_email in emails_to_check:
-            existing_email = await FarmerService.get_by_email(db, check_email)
-            if existing_email:
-                if existing_email.supabase_user_id and existing_email.supabase_user_id != supabase_user.user_id:
+        conditions = [Farmer.phone_number == phone]
+        for e in emails_to_check:
+            conditions.append(Farmer.email == e)
+
+        conflict_query = await db.execute(
+            select(Farmer).options(selectinload(Farmer.farms)).where(or_(*conditions))
+        )
+        existing_matches = conflict_query.scalars().all()
+
+        # Check for ownership conflicts against other accounts
+        for match in existing_matches:
+            if match.supabase_user_id and match.supabase_user_id != supabase_user.user_id:
+                if match.phone_number == phone:
                     raise DuplicateEntityException(
-                        f"Farmer with email '{check_email}' is already registered with another account"
+                        f"Farmer with phone '{phone}' is already registered with another account. Please sign in with that account or use a different contact phone number."
                     )
-                # Re-link unlinked or matching legacy farmer
-                existing_email.supabase_user_id = supabase_user.user_id
-                existing_email.phone_number = phone
-                existing_email.full_name = data.full_name
-                existing_email.preferred_language = data.preferred_language
-                existing_email.village = data.village
-                existing_email.district = data.district
-                existing_email.state = data.state
-                existing_email.country = data.country
-
-                # Prevent duplicate initial farm plot if one already exists
-                if not existing_email.farms:
-                    farm = Farm(
-                        farmer_id=existing_email.id,
-                        name=data.farm_name,
-                        latitude=data.latitude,
-                        longitude=data.longitude,
-                        location_geom=f"SRID=4326;POINT({data.longitude} {data.latitude})",
-                        acreage=data.farm_acreage,
-                        soil_type=data.soil_type,
-                        irrigation_source=data.irrigation_source,
-                        elevation_meters=data.elevation_meters,
-                        micro_zone_name=f"{data.village} Zone ({round(data.latitude, 2)}N, {round(data.longitude, 2)}E)",
+                if match.email in emails_to_check:
+                    raise DuplicateEntityException(
+                        f"Farmer with email '{match.email}' is already registered with another account. Please sign in with that account."
                     )
-                    db.add(farm)
 
-                await db.commit()
-                await db.refresh(existing_email)
-                return existing_email
-
-        # Check if phone already registered by another account
-        existing_phone = await FarmerService.get_by_phone(db, phone)
-        if existing_phone:
-            if existing_phone.supabase_user_id and existing_phone.supabase_user_id != supabase_user.user_id:
-                raise DuplicateEntityException(
-                    f"Farmer with phone '{phone}' is already registered with another account"
-                )
-            # Re-link legacy or unlinked phone to this Supabase user
-            existing_phone.supabase_user_id = supabase_user.user_id
+        # Check if an unlinked legacy record matches phone or email
+        unlinked_match = next((m for m in existing_matches if not m.supabase_user_id), None)
+        if unlinked_match:
+            unlinked_match.supabase_user_id = supabase_user.user_id
+            unlinked_match.phone_number = phone
             if email:
-                existing_phone.email = email
-            existing_phone.full_name = data.full_name
-            existing_phone.preferred_language = data.preferred_language
-            existing_phone.village = data.village
-            existing_phone.district = data.district
-            existing_phone.state = data.state
-            existing_phone.country = data.country
+                unlinked_match.email = email
+            unlinked_match.full_name = data.full_name
+            unlinked_match.preferred_language = data.preferred_language
+            unlinked_match.village = data.village
+            unlinked_match.district = data.district
+            unlinked_match.state = data.state
+            unlinked_match.country = data.country
 
-            # Prevent duplicate initial farm plot if one already exists
-            if not existing_phone.farms:
+            if not unlinked_match.farms:
                 farm = Farm(
-                    farmer_id=existing_phone.id,
+                    farmer_id=unlinked_match.id,
                     name=data.farm_name,
                     latitude=data.latitude,
                     longitude=data.longitude,
@@ -186,10 +219,10 @@ class FarmerService:
                 db.add(farm)
 
             await db.commit()
-            await db.refresh(existing_phone)
-            return existing_phone
+            await db.refresh(unlinked_match)
+            return unlinked_match
 
-        # Create new farmer entity
+        # 3. Create new farmer entity
         farmer = Farmer(
             supabase_user_id=supabase_user.user_id,
             full_name=data.full_name,

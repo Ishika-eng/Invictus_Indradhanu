@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [confirmationNotice, setConfirmationNotice] = useState<string | null>(null);
+  const inFlightProfileRef = React.useRef<Promise<any> | null>(null);
 
   // Sync Supabase Auth session on mount and listen to changes
   useEffect(() => {
@@ -136,27 +137,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  async function loadBackendProfile(token: string) {
-    try {
-      const state = await fetchMyAuthState(token);
-      setIsRegistered(state.is_registered);
-      if (state.farmer) {
-        setFarmer(state.farmer);
-        const farmerFarms = state.farmer.farms || [];
-        setFarms(farmerFarms);
-        if (farmerFarms.length > 0) {
-          setSelectedFarm(farmerFarms[0]);
-        }
-      } else {
-        setFarmer(null);
-        setFarms([]);
-        setSelectedFarm(null);
-      }
-    } catch (err) {
-      console.warn('Backend profile fetch (offline or not registered yet):', err);
-      setIsRegistered(false);
-      setFarmer(null);
+  async function loadBackendProfile(token: string, force: boolean = false) {
+    if (!token) return;
+    if (inFlightProfileRef.current && !force) {
+      return inFlightProfileRef.current;
     }
+
+    const fetchPromise = (async () => {
+      try {
+        const state = await fetchMyAuthState(token);
+        setIsRegistered(state.is_registered);
+        if (state.farmer) {
+          setFarmer(state.farmer);
+          const farmerFarms = state.farmer.farms || [];
+          setFarms(farmerFarms);
+          if (farmerFarms.length > 0) {
+            setSelectedFarm(farmerFarms[0]);
+          }
+        } else {
+          setFarmer(null);
+          setFarms([]);
+          setSelectedFarm(null);
+        }
+        return state;
+      } catch (err) {
+        console.warn('Backend profile fetch (offline or not registered yet):', err);
+        setIsRegistered(false);
+        setFarmer(null);
+        return null;
+      } finally {
+        inFlightProfileRef.current = null;
+      }
+    })();
+
+    inFlightProfileRef.current = fetchPromise;
+    return fetchPromise;
   }
 
   const loginWithEmail = async (
@@ -260,8 +275,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!session?.access_token) {
       return { success: false, error: 'Please sign in first before registering.' };
     }
-    // Idempotency check: if farmer profile is already confirmed in context, avoid redundant network calls
-    if (isRegistered && farmer) {
+    // Idempotency check: if farmer profile is already confirmed in context and has same phone, avoid redundant network calls
+    if (isRegistered && farmer && farmer.phone_number === payload.phone_number) {
       return { success: true };
     }
 
@@ -276,19 +291,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return { success: true };
     } catch (err: any) {
-      // If registration failed because account is already registered (network retry scenario),
-      // recover gracefully by synchronizing profile from backend
-      if (err.message && (err.message.includes('already registered') || err.message.includes('409'))) {
-        await loadBackendProfile(session.access_token);
-        return { success: true };
-      }
-      return { success: false, error: err.message || 'Registration failed' };
+      const errMsg = err.message || 'Registration failed';
+      // If registration fails with a conflict (e.g. phone already registered to another account),
+      // surface the actionable conflict message to the user rather than swallowing it
+      return { success: false, error: errMsg };
     }
   };
 
   const refreshProfile = async () => {
     if (session?.access_token) {
-      await loadBackendProfile(session.access_token);
+      await loadBackendProfile(session.access_token, true);
     }
   };
 

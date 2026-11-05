@@ -14,7 +14,8 @@ import {
   Loader2,
   CheckCircle2,
   Lock,
-  Layers
+  Layers,
+  AlertCircle
 } from 'lucide-react';
 import { useAdvisory, PRESET_LOCATIONS, LocationOption } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
@@ -248,8 +249,12 @@ export const Step1FarmerProfile: React.FC = () => {
           </div>
 
           {regError && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-              {regError}
+            <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-xs flex items-start gap-2.5 shadow-sm">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="flex-1 leading-relaxed">
+                <span className="font-bold">Registration Notice: </span>
+                <span>{regError}</span>
+              </div>
             </div>
           )}
 

@@ -101,13 +101,15 @@ async def test_farmer_registration_and_state(client: AsyncClient):
     assert res_me_after.json()["is_registered"] is True
     assert res_me_after.json()["farmer"]["full_name"] == "Balaji Rao"
 
-    # 4. Duplicate registration attempt should return 409 Conflict
+    # 4. Duplicate registration attempt with same account is idempotent and returns existing profile
     res_dup = await client.post(
         "/api/v1/auth/register-farmer",
         json=reg_payload,
         headers=headers,
     )
-    assert res_dup.status_code == 409
+    assert res_dup.status_code == 201
+    assert res_dup.json()["id"] == farmer_data["id"]
+    assert len(res_dup.json()["farms"]) == 1
 
     # 5. Retrieve authenticated farmer via /farmers/me
     res_my_profile = await client.get("/api/v1/farmers/me", headers=headers)
@@ -318,10 +320,11 @@ async def test_registration_retry_duplicate_conflict_and_farm_idempotency(client
     farmer_data = res_first.json()
     assert len(farmer_data["farms"]) == 1
 
-    # 2. Retry / duplicate attempt on /register-farmer returns 409 Conflict
+    # 2. Retry / duplicate attempt on /register-farmer by same account is idempotent and returns existing profile
     res_retry = await client.post("/api/v1/auth/register-farmer", json=reg_payload, headers=headers)
-    assert res_retry.status_code == 409
-    assert "already registered" in str(res_retry.json()).lower()
+    assert res_retry.status_code == 201
+    assert res_retry.json()["id"] == farmer_data["id"]
+    assert len(res_retry.json()["farms"]) == 1
 
     # 3. Adding the exact same farm plot (same name, lat, lng) via /farms/me is idempotent and returns existing plot
     add_plot_payload = {
@@ -479,6 +482,216 @@ async def test_supabase_es256_asymmetric_token_verification(client: AsyncClient)
 
     finally:
         KNOWN_JWKS.pop(test_kid, None)
+
+
+@pytest.mark.asyncio
+async def test_scenario_1_new_verified_email_account_unused_phone(client: AsyncClient):
+    """Test 1: New verified email account with an unused phone number registers successfully."""
+    user_id = str(uuid.uuid4())
+    email = f"farmer_new_{user_id[:8]}@example.com"
+    token = create_test_token(user_id, phone=None, email=email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    payload = {
+        "full_name": "Kisan Patil",
+        "phone_number": "+919811223344",
+        "email": email,
+        "preferred_language": "mr",
+        "village": "Sangli",
+        "district": "Sangli",
+        "state": "Maharashtra",
+        "country": "India",
+        "farm_name": "Grape Vineyard",
+        "farm_acreage": 3.5,
+        "soil_type": "Black Clay Soil",
+        "irrigation_source": "Drip Irrigation",
+        "latitude": 16.8524,
+        "longitude": 74.5815,
+        "elevation_meters": 550.0,
+    }
+
+    res = await client.post("/api/v1/auth/register-farmer", json=payload, headers=headers)
+    assert res.status_code == 201
+    data = res.json()
+    assert data["full_name"] == "Kisan Patil"
+    assert data["phone_number"] == "+919811223344"
+    assert data["email"] == email
+    assert data["supabase_user_id"] == user_id
+    assert len(data["farms"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_scenario_2_existing_farmer_registering_again_same_account(client: AsyncClient):
+    """Test 2: Existing farmer registering again with the same authenticated account returns/updates profile idempotently."""
+    user_id = str(uuid.uuid4())
+    email = f"farmer_repeat_{user_id[:8]}@example.com"
+    token = create_test_token(user_id, phone=None, email=email)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    payload_initial = {
+        "full_name": "Ramesh Kulkarni",
+        "phone_number": "+919822337788",
+        "email": email,
+        "preferred_language": "mr",
+        "village": "Satara",
+        "district": "Satara",
+        "state": "Maharashtra",
+        "farm_name": "Hill Plot A",
+        "farm_acreage": 2.0,
+        "latitude": 17.6805,
+        "longitude": 74.0183,
+    }
+
+    # Initial registration
+    res1 = await client.post("/api/v1/auth/register-farmer", json=payload_initial, headers=headers)
+    assert res1.status_code == 201
+    farmer_id = res1.json()["id"]
+
+    # Re-registering with same account (e.g. updating village and farm acreage)
+    payload_retry = {
+        **payload_initial,
+        "village": "New Satara",
+        "farm_acreage": 3.0,
+    }
+    res2 = await client.post("/api/v1/auth/register-farmer", json=payload_retry, headers=headers)
+    assert res2.status_code == 201
+    data2 = res2.json()
+    assert data2["id"] == farmer_id
+    assert data2["village"] == "New Satara"
+    assert len(data2["farms"]) == 1
+    assert data2["farms"][0]["acreage"] == 3.0
+
+
+@pytest.mark.asyncio
+async def test_scenario_3_different_account_using_already_registered_phone(client: AsyncClient):
+    """Test 3: Different Supabase account attempting to use an already-registered phone number returns 409 Conflict."""
+    # First farmer registers with phone
+    user1 = str(uuid.uuid4())
+    token1 = create_test_token(user1, phone="+919665537301")
+    payload1 = {
+        "full_name": "Original Owner",
+        "phone_number": "+919665537301",
+        "preferred_language": "en",
+        "village": "Pune",
+        "district": "Pune",
+        "state": "Maharashtra",
+        "farm_name": "Owner Farm",
+        "farm_acreage": 1.5,
+        "latitude": 18.5204,
+        "longitude": 73.8567,
+    }
+    res1 = await client.post("/api/v1/auth/register-farmer", json=payload1, headers={"Authorization": f"Bearer {token1}"})
+    assert res1.status_code == 201
+
+    # Second farmer with different Supabase user attempts to claim the same phone number
+    user2 = str(uuid.uuid4())
+    token2 = create_test_token(user2, phone=None, email="intruder@example.com")
+    payload2 = {
+        "full_name": "Second User",
+        "phone_number": "+919665537301",
+        "preferred_language": "mr",
+        "village": "Nagpur",
+        "district": "Nagpur",
+        "state": "Maharashtra",
+        "farm_name": "Second Farm",
+        "farm_acreage": 2.5,
+        "latitude": 21.1458,
+        "longitude": 79.0882,
+    }
+    res2 = await client.post("/api/v1/auth/register-farmer", json=payload2, headers={"Authorization": f"Bearer {token2}"})
+    assert res2.status_code == 409
+    err_body = res2.json()
+    err_msg = str(err_body.get("detail") or err_body.get("error", {}).get("message", "")).lower()
+    assert "already registered with another account" in err_msg
+    assert "+919665537301" in err_msg
+
+
+@pytest.mark.asyncio
+async def test_scenario_4_existing_phone_otp_account_and_new_email_account(client: AsyncClient):
+    """Test 4: Existing phone-OTP account owns the phone number; newly created email account attempting to use it gets 409."""
+    # Phone-OTP user registers
+    phone_otp_user_id = str(uuid.uuid4())
+    shared_phone = "+919665537301"
+    otp_token = create_test_token(phone_otp_user_id, phone=shared_phone)
+    payload_otp = {
+        "full_name": "Ram Mahajan (OTP)",
+        "phone_number": shared_phone,
+        "preferred_language": "mr",
+        "village": "Baramati",
+        "district": "Pune",
+        "state": "Maharashtra",
+        "farm_name": "Baramati Farm",
+        "farm_acreage": 5.0,
+        "latitude": 18.1528,
+        "longitude": 74.5768,
+    }
+    res_otp = await client.post(
+        "/api/v1/auth/register-farmer",
+        json=payload_otp,
+        headers={"Authorization": f"Bearer {otp_token}"},
+    )
+    assert res_otp.status_code == 201
+
+    # Newly created email account tries to register using the same phone number
+    email_user_id = str(uuid.uuid4())
+    new_email_token = create_test_token(email_user_id, phone=None, email="mahajanram1506@gmail.com")
+    payload_email = {
+        "full_name": "Ram Mahajan (Email)",
+        "phone_number": shared_phone,
+        "email": "mahajanram1506@gmail.com",
+        "preferred_language": "mr",
+        "village": "Baramati",
+        "district": "Pune",
+        "state": "Maharashtra",
+        "farm_name": "Second Farm Attempt",
+        "farm_acreage": 2.5,
+        "latitude": 18.1528,
+        "longitude": 74.5768,
+    }
+    res_email = await client.post(
+        "/api/v1/auth/register-farmer",
+        json=payload_email,
+        headers={"Authorization": f"Bearer {new_email_token}"},
+    )
+    assert res_email.status_code == 409
+    err_text = str(res_email.json()).lower()
+    assert "already registered with another account" in err_text
+
+
+@pytest.mark.asyncio
+async def test_scenario_5_registration_retry_after_network_timeout(client: AsyncClient):
+    """Test 5: Registration retry after a network timeout safely returns existing farmer without creating duplicates."""
+    user_id = str(uuid.uuid4())
+    token = create_test_token(user_id, phone="+919833445566")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    payload = {
+        "full_name": "Timeout Retry Farmer",
+        "phone_number": "+919833445566",
+        "preferred_language": "hi",
+        "village": "Nashik",
+        "district": "Nashik",
+        "state": "Maharashtra",
+        "farm_name": "Onion Field",
+        "farm_acreage": 3.0,
+        "latitude": 19.9975,
+        "longitude": 73.7898,
+    }
+
+    # Initial request completes on backend
+    res1 = await client.post("/api/v1/auth/register-farmer", json=payload, headers=headers)
+    assert res1.status_code == 201
+    initial_farmer = res1.json()
+
+    # Client retries request after client-side timeout
+    res_retry = await client.post("/api/v1/auth/register-farmer", json=payload, headers=headers)
+    assert res_retry.status_code == 201
+    retried_farmer = res_retry.json()
+
+    # Assert exactly the same farmer ID is preserved, no duplicate profile, and exactly 1 farm
+    assert retried_farmer["id"] == initial_farmer["id"]
+    assert len(retried_farmer["farms"]) == 1
+    assert retried_farmer["farms"][0]["id"] == initial_farmer["farms"][0]["id"]
 
 
 

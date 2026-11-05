@@ -54,10 +54,10 @@ class Farmer(Base, TimestampMixin):
         "Farm", back_populates="farmer", cascade="all, delete-orphan", lazy="selectin"
     )
     advisories: Mapped[List["Advisory"]] = relationship(
-        "Advisory", back_populates="farmer", cascade="all, delete-orphan", lazy="selectin"
+        "Advisory", back_populates="farmer", cascade="all, delete-orphan"
     )
     delivery_logs: Mapped[List["DeliveryLog"]] = relationship(
-        "DeliveryLog", back_populates="farmer", lazy="selectin"
+        "DeliveryLog", back_populates="farmer"
     )
 
     def __repr__(self) -> str:
