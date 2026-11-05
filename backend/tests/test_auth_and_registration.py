@@ -362,4 +362,124 @@ async def test_registration_retry_duplicate_conflict_and_farm_idempotency(client
     assert "email" in str(res_email_conflict.json()).lower()
 
 
+@pytest.mark.asyncio
+async def test_supabase_es256_asymmetric_token_verification(client: AsyncClient):
+    """Verifies that modern Supabase ES256 asymmetric ECDSA JWT tokens are correctly verified via JWKS/EC keys."""
+    import base64
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from app.core.security import verify_supabase_jwt, KNOWN_JWKS, get_current_user
+
+    # 1. Generate an ECDSA P-256 test key pair
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    public_key = private_key.public_key()
+    pub_numbers = public_key.public_numbers()
+
+    # Convert coordinates to base64url format
+    x_bytes = pub_numbers.x.to_bytes(32, byteorder="big")
+    y_bytes = pub_numbers.y.to_bytes(32, byteorder="big")
+    x_b64 = base64.urlsafe_b64encode(x_bytes).rstrip(b"=").decode("ascii")
+    y_b64 = base64.urlsafe_b64encode(y_bytes).rstrip(b"=").decode("ascii")
+
+    test_kid = f"test-key-{uuid.uuid4()}"
+    KNOWN_JWKS[test_kid] = {
+        "alg": "ES256",
+        "crv": "P-256",
+        "ext": True,
+        "key_ops": ["verify"],
+        "kid": test_kid,
+        "kty": "EC",
+        "use": "sig",
+        "x": x_b64,
+        "y": y_b64,
+    }
+
+    try:
+        user_id = str(uuid.uuid4())
+        payload = {
+            "sub": user_id,
+            "role": "authenticated",
+            "aud": "authenticated",
+            "email": "farmer_es256@example.com",
+            "phone": "+919876500000",
+            "user_metadata": {
+                "full_name": "Ramesh Patil",
+            },
+            "exp": time.time() + 3600,
+        }
+
+        # Sign with private key using ES256
+        token = jwt.encode(
+            payload,
+            private_key,
+            algorithm="ES256",
+            headers={"kid": test_kid, "alg": "ES256"},
+        )
+
+        # Verify decoding through verify_supabase_jwt
+        supabase_user = verify_supabase_jwt(token)
+        assert supabase_user.user_id == user_id
+        assert supabase_user.email == "farmer_es256@example.com"
+        assert supabase_user.phone == "+919876500000"
+        assert supabase_user.role == "authenticated"
+
+        # Test through FastAPI HTTP endpoint
+        headers = {"Authorization": f"Bearer {token}"}
+        res_me = await client.get("/api/v1/auth/me", headers=headers)
+        assert res_me.status_code == 200
+        data_me = res_me.json()
+        assert data_me["authenticated"] is True
+        assert data_me["supabase_user_id"] == user_id
+        assert data_me["email"] == "farmer_es256@example.com"
+        assert data_me["phone_number"] == "+919876500000"
+
+        # Register farmer with ES256 token via /api/v1/auth/register-farmer
+        reg_payload = {
+            "full_name": "Ramesh Patil",
+            "preferred_language": "mr",
+            "village": "Sangli",
+            "district": "Sangli",
+            "state": "Maharashtra",
+            "country": "India",
+            "farm_name": "Turmeric Estate",
+            "farm_acreage": 3.5,
+            "soil_type": "Medium Black Soil",
+            "irrigation_source": "Drip Irrigation",
+            "latitude": 16.8524,
+            "longitude": 74.5815,
+        }
+        res_reg = await client.post(
+            "/api/v1/auth/register-farmer",
+            json=reg_payload,
+            headers=headers,
+        )
+        assert res_reg.status_code == 201
+        farmer_data = res_reg.json()
+        assert farmer_data["full_name"] == "Ramesh Patil"
+        assert farmer_data["email"] == "farmer_es256@example.com"
+        assert len(farmer_data["farms"]) == 1
+        assert farmer_data["farms"][0]["name"] == "Turmeric Estate"
+
+        # Tampered ES256 token must fail verification
+        tampered_token = token[:-5] + "AAAAA"
+        with pytest.raises(Exception) as exc_info:
+            verify_supabase_jwt(tampered_token)
+        assert "401" in str(exc_info.value) or "invalid" in str(exc_info.value).lower()
+
+        # Expired ES256 token must fail verification
+        expired_payload = {**payload, "exp": time.time() - 3600}
+        expired_token = jwt.encode(
+            expired_payload,
+            private_key,
+            algorithm="ES256",
+            headers={"kid": test_kid, "alg": "ES256"},
+        )
+        with pytest.raises(Exception) as exp_exc:
+            verify_supabase_jwt(expired_token)
+        assert "expired" in str(exp_exc.value).lower()
+
+    finally:
+        KNOWN_JWKS.pop(test_kid, None)
+
+
+
 
