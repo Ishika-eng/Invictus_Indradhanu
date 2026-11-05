@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 import re
 from typing import Any, Dict, List, Optional
@@ -125,41 +126,43 @@ class DeliveryDispatcher:
                 summary="Dispatch rejected: Recipient has previously opted out of notifications.",
             )
 
-        # 3. Rate Limiting Check (Max 5 deliveries per farmer per 24 hours)
-        one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
-        count_res = await db.execute(
-            select(func.count(DeliveryLog.id)).where(
-                DeliveryLog.farmer_id == farmer.id,
-                DeliveryLog.created_at >= one_day_ago,
-                DeliveryLog.status.in_(["SENT", "DELIVERED", "ANSWERED"]),
+        # 3. Rate Limiting Check (Max 5 deliveries per farmer per 24 hours) - only for live carrier deliveries
+        if not simulate:
+            one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+            count_res = await db.execute(
+                select(func.count(DeliveryLog.id)).where(
+                    DeliveryLog.farmer_id == farmer.id,
+                    DeliveryLog.created_at >= one_day_ago,
+                    DeliveryLog.status.in_(["SENT", "DELIVERED", "ANSWERED"]),
+                )
             )
-        )
-        recent_count = count_res.scalar_one() or 0
-        if recent_count >= self.MAX_DAILY_DELIVERIES_PER_FARMER and not simulate:
-            logger.warning(f"Rate limit exceeded for farmer {farmer.id}: {recent_count} deliveries in last 24h.")
-            log = DeliveryLog(
-                advisory_id=advisory.id,
-                farmer_id=farmer.id,
-                channel=channels[0] if channels else "SMS",
-                status="FAILED",
-                recipient_phone=target_phone,
-                content_snippet=advisory.immediate_action[:150],
-                language=language,
-                error_message=f"Rate limit exceeded: maximum {self.MAX_DAILY_DELIVERIES_PER_FARMER} notifications per 24 hours.",
-                provider="RATE_LIMITER",
-                is_simulation=False,
-            )
-            db.add(log)
-            await db.commit()
-            await db.refresh(log)
-            return DeliveryDispatchResponse(
-                dispatch_id=str(uuid.uuid4()),
-                advisory_id=str(advisory.id),
-                farmer_id=str(farmer.id),
-                channel_outcomes=[DeliveryLogResponse.model_validate(log)],
-                mode="LIVE",
-                summary="Dispatch halted by rate limiter: 24-hour advisory quota reached.",
-            )
+            recent_count = count_res.scalar_one() or 0
+            if recent_count >= self.MAX_DAILY_DELIVERIES_PER_FARMER:
+                logger.warning(f"Rate limit exceeded for farmer {farmer.id}: {recent_count} deliveries in last 24h.")
+                log = DeliveryLog(
+                    id=uuid.uuid4(),
+                    advisory_id=advisory.id,
+                    farmer_id=farmer.id,
+                    channel=channels[0] if channels else "SMS",
+                    status="FAILED",
+                    recipient_phone=target_phone,
+                    content_snippet=advisory.immediate_action[:150],
+                    language=language,
+                    error_message=f"Rate limit exceeded: maximum {self.MAX_DAILY_DELIVERIES_PER_FARMER} notifications per 24 hours.",
+                    provider="RATE_LIMITER",
+                    is_simulation=False,
+                    created_at=datetime.now(timezone.utc),
+                )
+                db.add(log)
+                await db.commit()
+                return DeliveryDispatchResponse(
+                    dispatch_id=str(uuid.uuid4()),
+                    advisory_id=str(advisory.id),
+                    farmer_id=str(farmer.id),
+                    channel_outcomes=[DeliveryLogResponse.model_validate(log)],
+                    mode="LIVE",
+                    summary="Dispatch halted by rate limiter: 24-hour advisory quota reached.",
+                )
 
         # Normalize channel list
         norm_channels = []
@@ -168,39 +171,44 @@ class DeliveryDispatcher:
             if ch_up in ["ALL", "EVERY"]:
                 norm_channels = ["SMS", "VOICE_IVR", "WHATSAPP"]
                 break
-            elif ch_up in ["SMS", "VOICE_IVR", "WHATSAPP"]:
+            elif ch_up in ["SMS", "VOICE_IVR", "WHATSAPP"] and ch_up not in norm_channels:
                 norm_channels.append(ch_up)
         if not norm_channels:
             norm_channels = [farmer.preferred_channel.upper() if farmer.preferred_channel else "SMS"]
 
-        outcomes: List[DeliveryLog] = []
-
-        # 4. Dispatch Loop per Channel
-        for channel in norm_channels:
-            idempotency_key = f"idemp_{advisory.id}_{channel}_{target_phone}"
-
-            # Check Idempotency (prevent duplicate send within 2 hours)
+        # Batch check Idempotency (prevent duplicate send within 2 hours) across all requested channels in a single query
+        candidate_keys = {
+            ch: f"idemp_{advisory.id}_{ch}_{target_phone}"
+            for ch in norm_channels
+        }
+        existing_logs_map: Dict[str, DeliveryLog] = {}
+        if not simulate:
             two_hours_ago = datetime.now(timezone.utc) - timedelta(hours=2)
             existing_res = await db.execute(
                 select(DeliveryLog).where(
-                    DeliveryLog.idempotency_key == idempotency_key,
+                    DeliveryLog.idempotency_key.in_(list(candidate_keys.values())),
                     DeliveryLog.created_at >= two_hours_ago,
                 )
             )
-            existing_log = existing_res.scalars().first()
-            if existing_log and not simulate:
-                logger.info(f"Duplicate dispatch prevented by idempotency key: {idempotency_key}")
-                outcomes.append(existing_log)
-                continue
+            for el in existing_res.scalars().all():
+                if el.idempotency_key:
+                    existing_logs_map[el.idempotency_key] = el
 
-            metadata = {
-                "advisory_id": str(advisory.id),
-                "crop_name": crop_name,
-                "timing": advisory.recommended_timing,
-                "risk": advisory.risk_if_ignored,
-            }
+        metadata = {
+            "advisory_id": str(advisory.id),
+            "crop_name": crop_name,
+            "timing": advisory.recommended_timing,
+            "risk": advisory.risk_if_ignored,
+        }
 
-            if channel == "SMS":
+        # 4. Dispatch Channels Concurrently via asyncio.gather
+        async def _dispatch_single_channel(ch: str) -> tuple[Optional[DeliveryLog], bool]:
+            idemp_key = candidate_keys[ch]
+            if not simulate and idemp_key in existing_logs_map:
+                logger.info(f"Duplicate dispatch prevented by idempotency key: {idemp_key}")
+                return existing_logs_map[idemp_key], False
+
+            if ch == "SMS":
                 res = await self.sms_provider.send(
                     recipient_phone=target_phone,
                     message_text=f"{advisory.immediate_action} {advisory.why_it_matters}",
@@ -209,7 +217,7 @@ class DeliveryDispatcher:
                     simulate=simulate,
                 )
                 provider_name = "MSG91"
-            elif channel == "VOICE_IVR":
+            elif ch == "VOICE_IVR":
                 res = await self.voice_provider.send(
                     recipient_phone=target_phone,
                     message_text=f"{advisory.immediate_action} {advisory.why_it_matters}",
@@ -218,7 +226,7 @@ class DeliveryDispatcher:
                     simulate=simulate,
                 )
                 provider_name = "EXOTEL"
-            elif channel == "WHATSAPP":
+            elif ch == "WHATSAPP":
                 res = await self.whatsapp_provider.send(
                     recipient_phone=target_phone,
                     message_text=f"{advisory.immediate_action}\n\n{advisory.why_it_matters}",
@@ -228,12 +236,14 @@ class DeliveryDispatcher:
                 )
                 provider_name = "META_WHATSAPP"
             else:
-                continue
+                return None, False
 
-            delivery_record = DeliveryLog(
+            now_utc = datetime.now(timezone.utc)
+            record = DeliveryLog(
+                id=uuid.uuid4(),
                 advisory_id=advisory.id,
                 farmer_id=farmer.id,
-                channel=channel,
+                channel=ch,
                 status=res.status,
                 recipient_phone=target_phone,
                 content_snippet=advisory.immediate_action[:180],
@@ -242,16 +252,26 @@ class DeliveryDispatcher:
                 carrier_message_id=res.carrier_message_id,
                 error_message=res.error_message,
                 provider=provider_name if not res.is_simulation else f"{provider_name}_SIMULATOR",
-                idempotency_key=idempotency_key,
+                idempotency_key=idemp_key,
                 is_simulation=res.is_simulation,
                 delivery_metadata=res.metadata,
+                created_at=now_utc,
             )
-            db.add(delivery_record)
-            outcomes.append(delivery_record)
+            return record, True
 
-        await db.commit()
-        for o in outcomes:
-            await db.refresh(o)
+        channel_results = await asyncio.gather(*[_dispatch_single_channel(ch) for ch in norm_channels])
+        
+        outcomes: List[DeliveryLog] = []
+        new_records: List[DeliveryLog] = []
+        for record, is_new in channel_results:
+            if record:
+                outcomes.append(record)
+                if is_new:
+                    new_records.append(record)
+                    db.add(record)
+
+        if new_records:
+            await db.commit()
 
         mode_str = "SIMULATION" if simulate or any(o.is_simulation for o in outcomes) else "LIVE"
         summary_str = f"Successfully processed {len(outcomes)} channel transmission(s) in {mode_str} mode."

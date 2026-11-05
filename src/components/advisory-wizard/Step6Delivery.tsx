@@ -30,6 +30,7 @@ import { Language } from '../../types/advisory';
 import { 
   dispatchAdvisory, 
   fetchDeliveryHistory, 
+  fetchLatestFarmAdvisory,
   optOutFarmer, 
   updateFarmerPreferences, 
   DeliveryLogResponse, 
@@ -177,14 +178,24 @@ export const Step6Delivery: React.FC = () => {
       // Ensure we have an advisory record on backend if logged in
       if (!targetAdvisoryId && session?.access_token && selectedFarm?.id) {
         try {
-          const generated = await generateFarmAdvisory(
-            { farm_id: selectedFarm.id, language: activeLanguage },
-            session.access_token
-          );
-          setLatestBackendAdvisory(generated);
-          targetAdvisoryId = generated.id;
-        } catch (e) {
-          console.warn('On-demand advisory creation failed:', e);
+          // Fast lookup: first check for existing latest farm advisory (avoids multi-minute re-synthesis)
+          const latest = await fetchLatestFarmAdvisory(selectedFarm.id, activeLanguage, session.access_token);
+          if (latest?.id) {
+            setLatestBackendAdvisory(latest);
+            targetAdvisoryId = latest.id;
+          }
+        } catch {
+          // Fall back to on-demand generation only if no advisory exists yet
+          try {
+            const generated = await generateFarmAdvisory(
+              { farm_id: selectedFarm.id, language: activeLanguage },
+              session.access_token
+            );
+            setLatestBackendAdvisory(generated);
+            targetAdvisoryId = generated.id;
+          } catch (e) {
+            console.warn('On-demand advisory creation failed:', e);
+          }
         }
       }
 
@@ -204,7 +215,15 @@ export const Step6Delivery: React.FC = () => {
         );
 
         setLatestDispatchResponse(res);
-        await refreshHistory();
+        // Optimistically append fresh outcomes to audit log immediately without waiting
+        if (res.channel_outcomes && res.channel_outcomes.length > 0) {
+          setRecentLogs(prev => {
+            const existingIds = new Set(prev.map(l => l.id));
+            const fresh = res.channel_outcomes.filter(o => !existingIds.has(o.id));
+            return [...fresh, ...prev];
+          });
+        }
+        refreshHistory().catch(() => {});
 
         const isSim = res.mode === 'SIMULATION';
         const msg = isSim
@@ -223,7 +242,7 @@ export const Step6Delivery: React.FC = () => {
         });
       } else {
         // Sandboxed fallback for guest / demonstration mode
-        await new Promise(r => setTimeout(r, 1200));
+        await new Promise(r => setTimeout(r, 200));
 
         const resolvedAdvisoryId = targetAdvisoryId || (latestBackendAdvisory?.id || `adv_${Date.now()}`);
         const resolvedFarmerId = farmer?.id || 'farmer_authenticated';

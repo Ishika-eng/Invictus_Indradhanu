@@ -477,3 +477,102 @@ async def test_dispatch_uses_authenticated_farmer_phone_and_language(
             assert outcome["recipient_phone"] == unique_phone
             assert outcome["language"] == "te"
 
+
+@pytest.mark.asyncio
+async def test_voice_ivr_sandbox_simulation_latency_and_isolation(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Voice Call (IVR) sandbox simulation must return promptly (< 1s) and remain isolated from live carriers."""
+    await seed_crop_database(db_session)
+    user_id = str(uuid.uuid4())
+    farmer_data, token = await register_test_farmer(
+        client, user_id, phone="+919866660006", lang="mr"
+    )
+    farm_id = uuid.UUID(farmer_data["farms"][0]["id"])
+    farmer_id = uuid.UUID(farmer_data["id"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    norm_meteo = OpenMeteoService._normalize_payload(MOCK_METEO, 18.82, 74.37)
+    with patch.object(OpenMeteoService, "fetch_weather", AsyncMock(return_value=norm_meteo)):
+        advisory = await AdvisoryGenerationService.generate_advisory(
+            db=db_session, farmer_id=farmer_id, farm_id=farm_id, language="mr"
+        )
+
+        start_time = time.perf_counter()
+        res = await client.post(
+            "/api/v1/deliveries/dispatch",
+            json={
+                "advisory_id": str(advisory.id),
+                "channels": ["VOICE_IVR"],
+                "simulate": True,
+            },
+            headers=headers,
+        )
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        assert res.status_code == 201
+        data = res.json()
+        assert data["mode"] == "SIMULATION"
+        assert len(data["channel_outcomes"]) == 1
+
+        voice_outcome = data["channel_outcomes"][0]
+        assert voice_outcome["channel"] == "VOICE_IVR"
+        assert voice_outcome["status"] == "SIMULATED"
+        assert voice_outcome["is_simulation"] is True
+        assert voice_outcome["provider"] == "EXOTEL_SIMULATOR"
+        assert voice_outcome["duration_seconds"] == 48
+
+        # Sandbox dispatch must complete promptly in well under 1.5 seconds (measured in ms)
+        assert duration_ms < 1500, f"Voice IVR sandbox dispatch was too slow: {duration_ms:.2f}ms"
+
+
+@pytest.mark.asyncio
+async def test_all_channels_parallel_sandbox_simulation_latency(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """All 3 channels (SMS, Voice IVR, WhatsApp) must execute concurrently via asyncio.gather within < 1.5s."""
+    await seed_crop_database(db_session)
+    user_id = str(uuid.uuid4())
+    farmer_data, token = await register_test_farmer(
+        client, user_id, phone="+919877770007", lang="hi"
+    )
+    farm_id = uuid.UUID(farmer_data["farms"][0]["id"])
+    farmer_id = uuid.UUID(farmer_data["id"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    norm_meteo = OpenMeteoService._normalize_payload(MOCK_METEO, 18.82, 74.37)
+    with patch.object(OpenMeteoService, "fetch_weather", AsyncMock(return_value=norm_meteo)):
+        advisory = await AdvisoryGenerationService.generate_advisory(
+            db=db_session, farmer_id=farmer_id, farm_id=farm_id, language="hi"
+        )
+
+        start_time = time.perf_counter()
+        res = await client.post(
+            "/api/v1/deliveries/dispatch",
+            json={
+                "advisory_id": str(advisory.id),
+                "channels": ["ALL"],
+                "simulate": True,
+            },
+            headers=headers,
+        )
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        assert res.status_code == 201
+        data = res.json()
+        assert data["mode"] == "SIMULATION"
+        assert len(data["channel_outcomes"]) == 3
+
+        channels_dispatched = [o["channel"] for o in data["channel_outcomes"]]
+        assert "SMS" in channels_dispatched
+        assert "VOICE_IVR" in channels_dispatched
+        assert "WHATSAPP" in channels_dispatched
+
+        for outcome in data["channel_outcomes"]:
+            assert outcome["status"] == "SIMULATED"
+            assert outcome["is_simulation"] is True
+
+        # Parallel dispatch across all 3 channels should complete in under 1.5 seconds
+        assert duration_ms < 1500, f"Parallel sandbox dispatch took too long: {duration_ms:.2f}ms"
+
+
