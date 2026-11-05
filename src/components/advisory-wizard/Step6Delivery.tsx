@@ -27,6 +27,8 @@ import confetti from 'canvas-confetti';
 import { useAdvisory, DeliveryChannelChoice } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { Language } from '../../types/advisory';
+import { speakText, stopSpeaking } from '../../utils/speech';
+import { TRANSLATIONS } from '../../utils/translations';
 import { 
   dispatchAdvisory, 
   fetchDeliveryHistory, 
@@ -134,6 +136,26 @@ export const Step6Delivery: React.FC = () => {
 
   const currentVoiceScript = voiceScripts[activeLanguage] || voiceScripts[selectedLanguage] || voiceScripts.en;
   const currentSmsText = smsTexts[activeLanguage] || smsTexts[selectedLanguage] || smsTexts.en;
+
+  const handleToggleAudio = () => {
+    if (isPlayingAudio) {
+      stopSpeaking();
+      setIsPlayingAudio(false);
+    } else {
+      speakText(
+        currentVoiceScript,
+        activeLanguage,
+        () => setIsPlayingAudio(true),
+        () => setIsPlayingAudio(false)
+      );
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, [activeLanguage]);
 
   // Load recent delivery logs
   const refreshHistory = async () => {
@@ -652,7 +674,7 @@ export const Step6Delivery: React.FC = () => {
       </div>
 
       {/* FINAL LAST-MILE RECEIPT CALLOUT */}
-      <div className="p-6 rounded-3xl bg-gradient-to-br from-moss-900 to-agri-950 text-white border-2 border-agri-500/40 shadow-soft-lg">
+      <div className="p-6 rounded-3xl bg-gradient-to-br from-[#0A1A12] via-[#0F261A] to-[#0A1A12] text-white border-2 border-agri-500/40 shadow-soft-lg">
         <div className="flex items-center justify-between mb-3 pb-3 border-b border-moss-800">
           <div className="flex items-center gap-2 text-agri-300 text-xs font-bold uppercase tracking-wider">
             <CheckCheck className="w-4 h-4 text-emerald-400" />
@@ -717,7 +739,7 @@ export const Step6Delivery: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsPlayingAudio(!isPlayingAudio)}
+                onClick={handleToggleAudio}
                 className="w-12 h-12 rounded-2xl bg-agri-400 hover:bg-agri-300 text-moss-950 flex items-center justify-center shadow-glow-agri transition-all active:scale-95"
               >
                 {isPlayingAudio ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
@@ -866,7 +888,7 @@ export const Step6Delivery: React.FC = () => {
               <div className="flex gap-2 pt-1">
                 <button 
                   type="button"
-                  onClick={() => setIsPlayingAudio(!isPlayingAudio)}
+                  onClick={handleToggleAudio}
                   className="flex-1 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold text-center flex items-center justify-center gap-1.5"
                 >
                   <Volume2 className="w-3.5 h-3.5" />

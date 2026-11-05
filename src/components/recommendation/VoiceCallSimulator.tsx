@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAdvisory } from '../../context/AdvisoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { speakText, stopSpeaking } from '../../utils/speech';
 
 export const VoiceCallSimulator: React.FC = () => {
   const { activeAdvisory, selectedLanguage, selectedFarmer, farmerName, farmerPhone } = useAdvisory();
@@ -49,13 +50,35 @@ export const VoiceCallSimulator: React.FC = () => {
   }, [isPlaying, totalDuration, playbackSpeed]);
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+    if (isPlaying) {
+      stopSpeaking();
+      setIsPlaying(false);
+    } else {
+      speakText(
+        activeScript,
+        activeLang,
+        () => setIsPlaying(true),
+        () => {
+          setIsPlaying(false);
+          setPlaybackSec(0);
+        },
+        playbackSpeed
+      );
+      setIsPlaying(true);
+    }
   };
 
   const handleReset = () => {
+    stopSpeaking();
     setIsPlaying(false);
     setPlaybackSec(0);
   };
+
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+    };
+  }, [activeLang]);
 
   return (
     <div className="rounded-3xl bg-moss-900 text-white border border-agri-600/40 p-6 sm:p-7 shadow-soft-lg relative overflow-hidden">

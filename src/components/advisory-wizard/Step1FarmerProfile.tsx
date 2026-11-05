@@ -21,6 +21,7 @@ import { useAdvisory, PRESET_LOCATIONS, LocationOption } from '../../context/Adv
 import { useAuth } from '../../context/AuthContext';
 import { Language } from '../../types/advisory';
 import { normalizePhoneNumber } from '../../utils/phone';
+import { TRANSLATIONS } from '../../utils/translations';
 
 export { normalizePhoneNumber };
 
@@ -42,6 +43,8 @@ export const Step1FarmerProfile: React.FC = () => {
     setSelectedIrrigation,
     selectedIrrigation
   } = useAdvisory();
+
+  const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS.en;
 
   const {
     user,
@@ -218,11 +221,11 @@ export const Step1FarmerProfile: React.FC = () => {
           <span className="text-[11px] font-bold uppercase tracking-wider text-agri-700 bg-agri-50 px-2.5 py-1 rounded-lg border border-agri-200">
             Step 1 of 6
           </span>
-          <h2 className="font-display font-extrabold text-xl sm:text-2xl text-moss-900 tracking-tight mt-1">
-            Farmer Profile & Farm Location
+          <h2 className="font-display font-extrabold text-xl sm:text-2xl text-slate-900 tracking-tight mt-1">
+            {t.step1Heading}
           </h2>
-          <p className="text-xs text-moss-500 mt-0.5">
-            Identify the smallholder farmer and connect their field coordinates with live weather feeds.
+          <p className="text-xs text-slate-600 mt-0.5">
+            {t.step1Subtext}
           </p>
         </div>
 
@@ -513,11 +516,11 @@ export const Step1FarmerProfile: React.FC = () => {
             {/* Farmer Name & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-moss-700 block mb-1.5">
-                  Farmer Full Name
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1.5">
+                  {t.farmerNameLabel}
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-moss-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={farmerName}
@@ -529,11 +532,11 @@ export const Step1FarmerProfile: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-moss-700 block mb-1.5">
-                  Mobile / Phone Number
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1.5">
+                  {t.mobileNumberLabel}
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-moss-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="tel"
                     value={farmerPhone}
@@ -548,8 +551,8 @@ export const Step1FarmerProfile: React.FC = () => {
             {/* Location Search & GPS Button */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-moss-700">
-                  Farm Location & GPS
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  {t.farmLocationLabel}
                 </label>
                 <button
                   type="button"
@@ -558,7 +561,7 @@ export const Step1FarmerProfile: React.FC = () => {
                   className="text-xs font-bold text-agri-700 hover:text-agri-900 flex items-center gap-1.5 hover:underline"
                 >
                   <Navigation className={`w-3.5 h-3.5 ${isDetectingLocation ? 'animate-spin text-agri-600' : 'text-agri-600'}`} />
-                  <span>{isDetectingLocation ? 'Reading GPS Sensor...' : 'Use Current GPS Location'}</span>
+                  <span>{isDetectingLocation ? t.detectingGps : t.useGpsButton}</span>
                 </button>
               </div>
 
@@ -600,8 +603,8 @@ export const Step1FarmerProfile: React.FC = () => {
 
             {/* Preferred Delivery Dialect */}
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-moss-700 block mb-2">
-                Preferred Language for Voice & SMS
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-2">
+                {t.languageLabel}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {languages.map((lang) => {
@@ -632,7 +635,7 @@ export const Step1FarmerProfile: React.FC = () => {
           <div className="lg:col-span-5 space-y-3.5">
             
             {/* Map-Style Visual Preview Card */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-moss-900 to-agri-950 text-white p-4 border border-agri-600/30 shadow-soft">
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#0F261A] to-[#0A1A12] text-white p-5 border border-agri-600/50 shadow-soft">
               
               {/* Topographic grid */}
               <div 
@@ -717,7 +720,7 @@ export const Step1FarmerProfile: React.FC = () => {
           onClick={handleProceed}
           className="flex items-center gap-2 px-6 py-3 rounded-xl bg-agri-700 hover:bg-agri-800 text-white font-bold text-sm shadow-soft hover:shadow-glow-agri transition-all active:scale-95 group"
         >
-          <span>Continue</span>
+          <span>{t.continueButton}</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>

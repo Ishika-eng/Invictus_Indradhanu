@@ -88,7 +88,7 @@ export const LiveClimateCard: React.FC = () => {
   const isRainy = rainProb > 50;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-moss-900 via-moss-800 to-agri-950 text-white p-6 sm:p-7 border border-agri-600/30 shadow-soft-lg">
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0A1A12] via-[#0F261A] to-[#0A1A12] text-white p-6 sm:p-7 border border-agri-600/40 shadow-soft-lg">
       
       {/* Dynamic Environmental Weather Animation Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

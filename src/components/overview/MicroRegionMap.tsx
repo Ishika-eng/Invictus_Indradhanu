@@ -17,24 +17,24 @@ export const MicroRegionMap: React.FC = () => {
   const [mapLayer, setMapLayer] = useState<'radar' | 'moisture' | 'temperature'>('radar');
 
   return (
-    <div className="rounded-3xl bg-white border border-canvas-300 shadow-soft p-5 sm:p-6 mb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <div className="card-modern p-6 bg-white space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded bg-agri-100 text-agri-800">
+            <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
               <Satellite className="w-4 h-4" />
             </span>
-            <h3 className="font-display font-extrabold text-base sm:text-lg text-moss-900">
-              Regional Satellite & Agro-Radar Micro-Zone
+            <h3 className="font-display font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+              Satellite Radar & Micro-Zone Spatial Map
             </h3>
           </div>
-          <p className="text-xs text-moss-500 mt-0.5">
-            Real-time Doppler precipitation & root-hydration thermal telemetry (NASA / IMD grid)
+          <p className="text-xs text-slate-500 mt-1">
+            Real-time Doppler precipitation & root-hydration thermal telemetry (NASA / Open-Meteo grid)
           </p>
         </div>
 
         {/* Map Layers Switcher */}
-        <div className="flex items-center gap-1.5 bg-canvas-100 p-1 rounded-xl border border-canvas-300 self-start sm:self-auto">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 self-start sm:self-auto">
           {[
             { id: 'radar' as const, label: 'Rain Doppler', icon: CloudRain },
             { id: 'moisture' as const, label: 'Soil Hydration', icon: Waves },
@@ -43,13 +43,13 @@ export const MicroRegionMap: React.FC = () => {
             <button
               key={l.id}
               onClick={() => setMapLayer(l.id)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 mapLayer === l.id
                   ? 'bg-agri-700 text-white shadow-soft-sm'
-                  : 'text-moss-600 hover:text-moss-900 hover:bg-canvas-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
             >
-              <l.icon className="w-3 h-3" />
+              <l.icon className="w-3.5 h-3.5" />
               <span>{l.label}</span>
             </button>
           ))}
@@ -57,11 +57,11 @@ export const MicroRegionMap: React.FC = () => {
       </div>
 
       {/* Simulated High-Res Agro Map Canvas */}
-      <div className="relative w-full h-72 sm:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-[#1b3b2b] via-[#244f3b] to-[#12281d] border border-agri-700/40 select-none">
+      <div className="relative w-full h-72 sm:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-[#0c2217] via-[#163827] to-[#081810] border border-agri-600/30 select-none shadow-inner">
         
         {/* Topographic grid pattern */}
         <div 
-          className="absolute inset-0 opacity-25"
+          className="absolute inset-0 opacity-20"
           style={{
             backgroundImage: `radial-gradient(circle at 2px 2px, rgba(167, 243, 208, 0.4) 1px, transparent 0)`,
             backgroundSize: '24px 24px'
@@ -71,18 +71,18 @@ export const MicroRegionMap: React.FC = () => {
         {/* Doppler Radar Sweep & Cloud Overlay */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Radar sweep line */}
-          <div className="absolute w-[600px] h-[600px] -top-24 -left-24 rounded-full border border-agri-400/20 animate-spin" style={{ animationDuration: '14s' }}>
-            <div className="w-1/2 h-1/2 bg-gradient-to-tr from-transparent via-agri-400/10 to-agri-400/30 rounded-tl-full" />
+          <div className="absolute w-[600px] h-[600px] -top-24 -left-24 rounded-full border border-emerald-400/20 animate-spin" style={{ animationDuration: '14s' }}>
+            <div className="w-1/2 h-1/2 bg-gradient-to-tr from-transparent via-emerald-400/10 to-emerald-400/25 rounded-tl-full" />
           </div>
 
           {/* Animated Rain Storm Front */}
           {mapLayer === 'radar' && (
-            <div className="absolute top-10 right-14 w-64 h-48 rounded-full bg-skyalt-500/30 blur-2xl animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="absolute top-10 right-14 w-64 h-48 rounded-full bg-sky-500/25 blur-2xl animate-pulse" style={{ animationDuration: '4s' }} />
           )}
 
           {/* Soil Moisture Heatmap */}
           {mapLayer === 'moisture' && (
-            <div className="absolute inset-x-8 top-12 bottom-12 rounded-3xl bg-emerald-500/20 blur-xl" />
+            <div className="absolute inset-x-8 top-12 bottom-12 rounded-3xl bg-emerald-500/25 blur-xl" />
           )}
 
           {/* Thermal Layer */}
@@ -92,20 +92,20 @@ export const MicroRegionMap: React.FC = () => {
         </div>
 
         {/* Micro-Zone Location Pins for Farmers */}
-        <div className="absolute inset-0 p-6 flex flex-col justify-between">
+        <div className="absolute inset-0 p-5 flex flex-col justify-between">
           
           {/* Top telemetry badges */}
           <div className="flex items-center justify-between z-10">
-            <div className="bg-moss-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-agri-500/30 text-[11px] text-canvas-100 flex items-center gap-2">
+            <div className="bg-slate-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-emerald-500/30 text-[11px] text-white flex items-center gap-2 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span className="font-semibold text-agri-300">Coverage: 1km² Micro-Grid</span>
-              <span className="text-moss-400">|</span>
-              <span className="font-mono">Lat: {selectedFarmer.location.coordinates[0]}° N</span>
+              <span className="font-bold text-emerald-300">Coverage: 1km² Micro-Grid</span>
+              <span className="text-slate-500">|</span>
+              <span className="font-mono text-slate-300">Lat: {selectedFarmer.location.coordinates[0]}° N</span>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 bg-moss-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-agri-500/30 text-[11px] text-canvas-100">
-              <Compass className="w-3.5 h-3.5 text-earth-300" />
-              <span>Elevation: <strong>{selectedFarmer.location.elevationMeters}m</strong></span>
+            <div className="hidden sm:flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-emerald-500/30 text-[11px] text-white shadow-sm">
+              <Compass className="w-3.5 h-3.5 text-amber-300" />
+              <span>Elevation: <strong className="font-mono">{selectedFarmer.location.elevationMeters}m</strong></span>
             </div>
           </div>
 
@@ -118,31 +118,31 @@ export const MicroRegionMap: React.FC = () => {
                   key={f.id}
                   onClick={() => setSelectedFarmer(f)}
                   className={`group relative flex flex-col items-center transition-all ${
-                    isSelected ? 'scale-110 z-20' : 'opacity-75 hover:opacity-100 hover:scale-105'
+                    isSelected ? 'scale-115 z-20' : 'opacity-80 hover:opacity-100 hover:scale-105'
                   }`}
                 >
                   {/* Glowing halo */}
                   {isSelected && (
-                    <div className="absolute -inset-3 rounded-full bg-agri-400/40 animate-ping" />
+                    <div className="absolute -inset-3 rounded-full bg-emerald-400/40 animate-ping" />
                   )}
 
                   {/* Marker Pin */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-lg border text-sm transition-all ${
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg border text-base transition-all ${
                     isSelected
-                      ? 'bg-gradient-to-br from-agri-400 to-agri-600 text-white border-white ring-4 ring-agri-400/30 shadow-glow-agri'
-                      : 'bg-moss-800 text-canvas-200 border-moss-600 hover:border-agri-400'
+                      ? 'bg-gradient-to-br from-emerald-400 to-agri-600 text-white border-white ring-4 ring-emerald-400/40 shadow-glow-agri'
+                      : 'bg-slate-900 text-slate-200 border-slate-700 hover:border-emerald-400'
                   }`}>
                     {f.avatar || '📍'}
                   </div>
 
                   {/* Marker Label Tag */}
-                  <div className={`mt-1.5 px-2.5 py-1 rounded-lg backdrop-blur-md text-[11px] font-bold border transition-all shadow-md ${
+                  <div className={`mt-2 px-3 py-1 rounded-xl backdrop-blur-md text-[11px] font-bold border transition-all shadow-md ${
                     isSelected 
-                      ? 'bg-white text-agri-950 border-agri-300 ring-2 ring-agri-500/20' 
-                      : 'bg-moss-900/90 text-canvas-200 border-moss-700'
+                      ? 'bg-white text-slate-950 border-emerald-300 ring-2 ring-emerald-500/20' 
+                      : 'bg-slate-900/90 text-slate-200 border-slate-800'
                   }`}>
                     <p className="leading-tight">{f.location.village}</p>
-                    <p className="text-[9px] font-normal text-moss-500">{f.activeCropId || 'Crop'}</p>
+                    <p className="text-[9px] font-medium text-slate-400">{f.activeCropId || 'Crop'}</p>
                   </div>
                 </button>
               );
@@ -151,20 +151,20 @@ export const MicroRegionMap: React.FC = () => {
 
           {/* Bottom legend and active zone telemetry */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 z-10">
-            <div className="bg-moss-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-agri-600/30 text-[11px] text-canvas-200">
-              <span className="text-agri-300 font-semibold">Active Sector: </span>
-              <span>{selectedFarmer.location.microZoneName}</span>
+            <div className="bg-slate-950/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-emerald-500/30 text-[11px] text-slate-200">
+              <span className="text-emerald-300 font-bold">Active Sector: </span>
+              <span className="font-medium">{selectedFarmer.location.microZoneName}</span>
             </div>
 
             {/* Radar scale legend */}
-            <div className="flex items-center gap-2 bg-moss-950/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-agri-600/30 text-[10px] text-canvas-300">
-              <span className="font-semibold text-white">Intensity:</span>
-              <div className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" title="Low Rain" />
+            <div className="flex items-center gap-2.5 bg-slate-950/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-emerald-500/30 text-[10px] text-slate-300">
+              <span className="font-bold text-white">Intensity:</span>
+              <div className="flex items-center gap-1.5 font-medium">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 <span>Light</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" title="Moderate" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
                 <span>Mod</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" title="Convective Storm" />
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                 <span className="text-rose-300 font-bold">Storm (38mm)</span>
               </div>
             </div>

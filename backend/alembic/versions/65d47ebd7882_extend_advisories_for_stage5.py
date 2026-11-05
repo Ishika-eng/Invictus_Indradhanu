@@ -26,18 +26,20 @@ def upgrade() -> None:
     op.add_column('advisories', sa.Column('model_version', sa.String(length=100), nullable=True))
     op.add_column('advisories', sa.Column('disclaimer', sa.Text(), nullable=True))
     op.add_column('advisories', sa.Column('needs_expert_review', sa.Boolean(), server_default=sa.text('false'), nullable=False))
-    op.alter_column('crops', 'ideal_soil',
-               existing_type=sa.VARCHAR(length=150),
-               type_=sa.String(length=200),
-               existing_nullable=True)
+    with op.batch_alter_table('crops') as batch_op:
+        batch_op.alter_column('ideal_soil',
+                   existing_type=sa.VARCHAR(length=150),
+                   type_=sa.String(length=200),
+                   existing_nullable=True)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.alter_column('crops', 'ideal_soil',
-               existing_type=sa.String(length=200),
-               type_=sa.VARCHAR(length=150),
-               existing_nullable=True)
+    with op.batch_alter_table('crops') as batch_op:
+        batch_op.alter_column('ideal_soil',
+                   existing_type=sa.String(length=200),
+                   type_=sa.VARCHAR(length=150),
+                   existing_nullable=True)
     op.drop_column('advisories', 'needs_expert_review')
     op.drop_column('advisories', 'disclaimer')
     op.drop_column('advisories', 'model_version')

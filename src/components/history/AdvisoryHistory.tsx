@@ -164,7 +164,7 @@ export const AdvisoryHistory: React.FC = () => {
       )}
 
       {/* Header & View Switcher */}
-      <div className="rounded-3xl bg-gradient-to-br from-moss-900 via-agri-950 to-moss-950 text-white border border-agri-600/30 shadow-soft-lg p-6 sm:p-7 space-y-5">
+      <div className="rounded-3xl bg-gradient-to-br from-[#0A1A12] via-[#0F261A] to-[#0A1A12] text-white border border-agri-600/40 shadow-soft-lg p-6 sm:p-7 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-agri-300 text-xs font-semibold uppercase tracking-wider mb-1">

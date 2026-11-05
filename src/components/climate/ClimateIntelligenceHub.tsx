@@ -26,7 +26,7 @@ export const ClimateIntelligenceHub: React.FC = () => {
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-300">
       
       {/* Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-moss-900 via-moss-800 to-agri-950 text-white p-6 sm:p-8 border border-agri-600/30 shadow-soft-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-3xl bg-gradient-to-br from-[#0A1A12] via-[#0F261A] to-[#0A1A12] text-white p-6 sm:p-8 border border-agri-600/40 shadow-soft-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-agri-300 text-xs font-semibold uppercase tracking-wider mb-1.5">
             <Satellite className="w-4 h-4" />

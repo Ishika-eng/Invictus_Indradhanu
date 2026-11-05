@@ -80,7 +80,7 @@ export const Step3Processing: React.FC = () => {
       </div>
 
       {/* Main Interactive CTA Card */}
-      <div className="rounded-3xl bg-gradient-to-br from-moss-900 via-moss-800 to-agri-950 text-white p-6 sm:p-10 border border-agri-600/30 shadow-soft-lg text-center relative overflow-hidden">
+      <div className="rounded-3xl bg-gradient-to-br from-[#0A1A12] via-[#0F261A] to-[#0A1A12] text-white p-6 sm:p-10 border border-agri-600/40 shadow-soft-lg text-center relative overflow-hidden">
         
         {/* Glow backdrop */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(82,183,136,0.18)_0,transparent_70%)] pointer-events-none" />
