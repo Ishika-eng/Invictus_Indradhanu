@@ -29,6 +29,7 @@ router = APIRouter()
 )
 async def get_latest_risk(
     farm_id: uuid.UUID,
+    crop_id: Optional[uuid.UUID] = Query(None, description="Optional target crop ID to filter latest risk"),
     current_farmer: Farmer = Depends(get_current_farmer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -38,6 +39,7 @@ async def get_latest_risk(
         db=db,
         farmer_id=current_farmer.id,
         farm_id=farm_id,
+        crop_id=crop_id,
     )
 
 

@@ -76,6 +76,7 @@ async def generate_advisory(
 async def get_latest_farm_advisory(
     farm_id: uuid.UUID,
     language: Optional[str] = Query(None, description="ISO language code ('mr', 'hi', 'te', 'en', 'sw')"),
+    crop_id: Optional[uuid.UUID] = Query(None, description="Optional target crop ID to filter latest advisory"),
     current_farmer: Farmer = Depends(get_current_farmer),
     db: AsyncSession = Depends(get_db),
 ):
@@ -84,6 +85,7 @@ async def get_latest_farm_advisory(
         farmer_id=current_farmer.id,
         farm_id=farm_id,
         language=language,
+        crop_id=crop_id,
     )
 
     crop_name = advisory.crop.name if advisory.crop else None

@@ -25,14 +25,17 @@ export interface FarmerProfile {
 export type CropType = 
   | 'Wheat'
   | 'Paddy (Rice)'
+  | 'Rice (Paddy)'
   | 'Cotton'
   | 'Tomato'
   | 'Sugarcane'
   | 'Maize'
+  | 'Maize (Corn)'
   | 'Mustard'
   | 'Coffee'
   | 'Soybean'
-  | 'Chickpea';
+  | 'Chickpea'
+  | string;
 
 export type GrowthStage = 
   | 'Germination & Emergence'
@@ -40,7 +43,8 @@ export type GrowthStage =
   | 'Flowering & Booting'
   | 'Pod / Grain Filling'
   | 'Maturity & Ripening'
-  | 'Harvest Ready';
+  | 'Harvest Ready'
+  | string;
 
 export type SoilType = 
   | 'Black Clay Soil (Vertisol)'
@@ -107,6 +111,7 @@ export interface AIAdvisory {
   immediateAction: string;
   whyItMatters: string;
   recommendedTiming: string;
+  riskIfIgnored?: string;
   impactPotential: string;
   
   // Multi-lingual translations

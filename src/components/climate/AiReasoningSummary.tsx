@@ -32,7 +32,9 @@ export const AiReasoningSummary: React.FC = () => {
       type: 'warning', 
       text: latestBackendAdvisory?.immediate_action 
         ? `${latestBackendAdvisory.immediate_action} (${latestBackendAdvisory.why_it_matters})`
-        : 'Holding scheduled irrigation prevents root waterlogging and protects flower retention.' 
+        : selectedCrop.toLowerCase().includes('rice') || selectedCrop.toLowerCase().includes('paddy')
+        ? 'Holding scheduled irrigation prevents bund overflow, root hypoxia, and nitrogen leaching.'
+        : 'Holding scheduled irrigation prevents root waterlogging and protects canopy vigor.' 
     },
   ];
 

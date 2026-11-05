@@ -32,6 +32,8 @@ export const Step5Recommendation: React.FC = () => {
     setSelectedLanguage, 
     farmerName, 
     selectedCrop, 
+    selectedCropId,
+    selectedStageId,
     selectedLocation,
     setDemoStep,
     setLatestBackendAdvisory,
@@ -53,31 +55,31 @@ export const Step5Recommendation: React.FC = () => {
   // Localized fallback content
   const localizedContent = {
     en: {
-      action: 'Delay irrigation for 24 hours.',
+      action: `Delay scheduled irrigation on ${selectedCrop} for 24 hours.`,
       why: 'Rain is likely in the next 24 hours and soil moisture is currently adequate. Irrigating now may cause waterlogging.',
       when: 'Reassess tomorrow morning.',
       risk: 'Possible waterlogging and root-zone nutrient loss.',
     },
     hi: {
-      action: 'अगले 24 घंटे के लिए सिंचाई टालें।',
+      action: `अगले 24 घंटे के लिए ${selectedCrop} में सिंचाई टालें।`,
       why: 'अगले 24 घंटों में बारिश की पूरी संभावना है और मिट्टी में नमी पर्याप्त है। अभी पानी देने से खेत में जलभराव हो सकता है।',
       when: 'कल सुबह स्थिति का दोबारा आकलन करें।',
       risk: 'जलभराव और जड़ों से पोषक तत्वों का बहाव।',
     },
     mr: {
-      action: 'पुढील २४ तास सिंचन पुढे ढकला.',
+      action: `पुढील २४ तास ${selectedCrop} पिकाचे सिंचन पुढे ढकला.`,
       why: 'पुढील २४ तासांत पाऊस पडण्याची दाट शक्यता असून जमिनीत ओलावा पुरेसा आहे. आता पाणी दिल्यास शेतात पाणी साचून पिकाचे नुकसान होऊ शकते.',
       when: 'उद्या सकाळी पुन्हा परिस्थिती तपासा.',
       risk: 'पाणी साचणे आणि मुळांमधील पोषक द्रव्ये वाहून जाण्याचा धोका.',
     },
     te: {
-      action: '24 గంటల పాటు నీటిపారుదలని నిలిపివేయండి.',
+      action: `24 గంటల పాటు ${selectedCrop} పంటకు నీటిపారుదలని నిలిపివేయండి.`,
       why: 'రాగల 24 గంటల్లో వర్షం కురిసే అవకాశం ఉంది మరియు నేలలో తగినంత తేమ ఉంది. ఇప్పుడు నీరు పెడితే నీరు నిలిచిపోయే ప్రమాదం ఉంది.',
       when: 'రేపు ఉదయం మళ్ళీ పరిశీలించండి.',
       risk: 'నీరు నిల్వ ఉండటం మరియు పోషకాలు కోల్పోవడం.',
     },
     sw: {
-      action: 'Sitisha umwagiliaji kwa saa 24.',
+      action: `Sitisha umwagiliaji kwa zao la ${selectedCrop} kwa saa 24.`,
       why: 'Mvua inatarajiwa ndani ya saa 24 zijazo na unyevu wa udongo unatosha. Kumwagilia sasa kunaweza kusababisha mafuriko ya mizizi.',
       when: 'Tathmini upya kesho asubuhi.',
       risk: 'Uwezekano wa mizizi kujaa maji na kupoteza virutubisho.',
@@ -86,7 +88,7 @@ export const Step5Recommendation: React.FC = () => {
 
   const current = localizedContent[selectedLanguage] || localizedContent.en;
 
-  // Load live advisory from backend when farm or language changes
+  // Load live advisory from backend when farm, crop, or language changes
   useEffect(() => {
     let mounted = true;
     async function loadAdvisory() {
@@ -96,7 +98,8 @@ export const Step5Recommendation: React.FC = () => {
         const adv = await fetchLatestFarmAdvisory(
           selectedFarm.id,
           selectedLanguage,
-          session.access_token
+          session.access_token,
+          selectedCropId || undefined
         );
         if (mounted) {
           setLiveAdvisory(adv);
@@ -111,14 +114,19 @@ export const Step5Recommendation: React.FC = () => {
 
     loadAdvisory();
     return () => { mounted = false; };
-  }, [selectedFarm?.id, selectedLanguage, session?.access_token, setLatestBackendAdvisory]);
+  }, [selectedFarm?.id, selectedCrop, selectedCropId, selectedLanguage, session?.access_token, setLatestBackendAdvisory]);
 
   const handleRegenerate = async () => {
     if (!selectedFarm?.id || !session?.access_token) return;
     setRegenerating(true);
     try {
       const adv = await generateFarmAdvisory(
-        { farm_id: selectedFarm.id, language: selectedLanguage },
+        {
+          farm_id: selectedFarm.id,
+          language: selectedLanguage,
+          crop_id: selectedCropId || undefined,
+          stage_id: selectedStageId || undefined,
+        },
         session.access_token
       );
       setLiveAdvisory(adv);
@@ -134,7 +142,11 @@ export const Step5Recommendation: React.FC = () => {
   const whyText = liveAdvisory?.why_it_matters || current.why;
   const whenText = liveAdvisory?.recommended_timing || current.when;
   const riskText = liveAdvisory?.risk_if_ignored || current.risk;
-  const impactText = liveAdvisory?.projected_impact || 'Preserves root aeration, prevents flower abortion, and optimizes pumping energy';
+  const impactText = liveAdvisory?.projected_impact || (
+    selectedCrop.toLowerCase().includes('rice') || selectedCrop.toLowerCase().includes('paddy')
+      ? 'Preserves root aeration, avoids nitrogen leaching, and optimizes pumping energy'
+      : 'Preserves root aeration, protects crop vigor, and optimizes pumping energy'
+  );
   const confidenceScore = liveAdvisory?.confidence_pct || 92.0;
   const modelVer = liveAdvisory?.model_version || 'rules_v1+gemini-1.5-flash';
 
@@ -344,7 +356,7 @@ export const Step5Recommendation: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-canvas-200 hover:bg-canvas-300 text-moss-800 font-semibold text-xs transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Climate Data</span>
+          <span>Back</span>
         </button>
 
         <button
@@ -352,7 +364,7 @@ export const Step5Recommendation: React.FC = () => {
           onClick={() => setDemoStep(6)}
           className="flex items-center gap-2 px-6 py-3 rounded-xl bg-agri-700 hover:bg-agri-800 text-white font-bold text-sm shadow-soft hover:shadow-glow-agri transition-all active:scale-95 group"
         >
-          <span>Continue to Step 6 — Last-Mile Delivery</span>
+          <span>Continue</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>

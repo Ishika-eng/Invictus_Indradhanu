@@ -21,7 +21,7 @@ import {
 } from '../../services/api';
 
 export const ClimateRiskScoreCard: React.FC = () => {
-  const { selectedCrop, selectedLocation } = useAdvisory();
+  const { selectedCrop, selectedCropId, selectedStageId, selectedLocation } = useAdvisory();
   const { selectedFarm, session } = useAuth();
 
   const [riskData, setRiskData] = useState<RiskAssessmentData | null>(null);
@@ -34,7 +34,11 @@ export const ClimateRiskScoreCard: React.FC = () => {
       if (!selectedFarm?.id || !session?.access_token) return;
       setLoading(true);
       try {
-        const data = await fetchLatestFarmRisk(selectedFarm.id, session.access_token);
+        const data = await fetchLatestFarmRisk(
+          selectedFarm.id,
+          session.access_token,
+          selectedCropId || undefined
+        );
         if (mounted) setRiskData(data);
       } catch (err) {
         console.warn('Risk evaluation API fallback to baseline calculation:', err);
@@ -45,13 +49,20 @@ export const ClimateRiskScoreCard: React.FC = () => {
 
     loadRisk();
     return () => { mounted = false; };
-  }, [selectedFarm?.id, session?.access_token]);
+  }, [selectedFarm?.id, selectedCrop, selectedCropId, session?.access_token]);
 
   const handleReevaluate = async () => {
     if (!selectedFarm?.id || !session?.access_token) return;
     setEvaluating(true);
     try {
-      const data = await evaluateFarmRisk(selectedFarm.id, {}, session.access_token);
+      const data = await evaluateFarmRisk(
+        selectedFarm.id,
+        {
+          crop_id: selectedCropId || undefined,
+          stage_id: selectedStageId || undefined,
+        },
+        session.access_token
+      );
       setRiskData(data);
     } catch (err) {
       console.warn('Re-evaluation error:', err);

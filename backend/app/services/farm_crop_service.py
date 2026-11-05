@@ -98,13 +98,22 @@ class FarmCropService:
         available_acreage = round(farm.acreage - current_active_acreage, 2)
 
         if data.status == "active" and (current_active_acreage + data.cultivated_acreage) > (farm.acreage + 0.01):
-            raise AppException(
-                status_code=400,
-                message=(
-                    f"Cultivated acreage ({data.cultivated_acreage} acres) exceeds available plot capacity. "
-                    f"Farm '{farm.name}' has {available_acreage} acres available out of {farm.acreage} total acres."
-                ),
-            )
+            if getattr(data, "replace_active", False) and data.cultivated_acreage <= (farm.acreage + 0.01):
+                # Farmer is switching active crop cycle on this plot. Archive prior active crop records to reallocate acreage seamlessly.
+                existing_active_crops = await db.execute(
+                    select(FarmCrop).where(FarmCrop.farm_id == farm_id, FarmCrop.status == "active")
+                )
+                for old_crop in existing_active_crops.scalars().all():
+                    old_crop.status = "archived"
+                logger.info(f"Archived previous active crops on farm '{farm.name}' ({farm_id}) to activate new crop {data.crop_id}")
+            else:
+                raise AppException(
+                    status_code=400,
+                    message=(
+                        f"Cultivated acreage ({data.cultivated_acreage} acres) exceeds available plot capacity. "
+                        f"Farm '{farm.name}' has {available_acreage} acres available out of {farm.acreage} total acres."
+                    ),
+                )
 
         # 3. Validate Sowing Date
         today = date.today()

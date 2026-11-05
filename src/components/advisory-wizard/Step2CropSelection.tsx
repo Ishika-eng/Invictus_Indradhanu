@@ -45,11 +45,18 @@ export const Step2CropSelection: React.FC = () => {
   const { 
     selectedCrop, 
     setSelectedCrop, 
+    selectedCropId,
+    setSelectedCropId,
     selectedStage, 
     setSelectedStage, 
+    selectedStageId,
+    setSelectedStageId,
+    selectedVariety,
+    setSelectedVariety,
     setDemoStep,
     farmerName,
-    selectedLocation
+    selectedLocation,
+    setLatestBackendAdvisory,
   } = useAdvisory();
 
   const { farmer, farms, selectedFarm, setSelectedFarm, session, isRegistered } = useAuth();
@@ -95,10 +102,12 @@ export const Step2CropSelection: React.FC = () => {
           const matched = data.find(c => c.name.toLowerCase().includes(selectedCrop.toLowerCase())) || data[0];
           setActiveCropRecord(matched);
           setSelectedCrop(matched.name);
+          if (matched.id) setSelectedCropId(matched.id);
           if (matched.growth_stages.length > 0) {
             const currentStageObj = matched.growth_stages.find(s => s.stage_name === selectedStage) || matched.growth_stages[0];
             setActiveStageId(currentStageObj.id);
             setSelectedStage(currentStageObj.stage_name);
+            if (currentStageObj.id) setSelectedStageId(currentStageObj.id);
           }
         }
       } catch (err) {
@@ -146,6 +155,7 @@ export const Step2CropSelection: React.FC = () => {
   const handleSelectCrop = (crop: BackendCrop) => {
     setActiveCropRecord(crop);
     setSelectedCrop(crop.name);
+    if (crop.id) setSelectedCropId(crop.id);
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -153,6 +163,7 @@ export const Step2CropSelection: React.FC = () => {
       // Pick middle stage (e.g., Vegetative/Growing) or first stage
       const defaultStage = crop.growth_stages.find(s => s.stage_order === 3) || crop.growth_stages[0];
       setActiveStageId(defaultStage.id);
+      setSelectedStageId(defaultStage.id);
       setSelectedStage(defaultStage.stage_name);
     }
   };
@@ -190,6 +201,7 @@ export const Step2CropSelection: React.FC = () => {
     const stage = activeCropRecord.growth_stages.find(s => s.id === estimation.suggested_stage_id);
     if (stage) {
       setActiveStageId(stage.id);
+      setSelectedStageId(stage.id);
       setSelectedStage(stage.stage_name);
       setSuccessMessage(`Stage updated to '${stage.stage_name}' based on planting date.`);
       setTimeout(() => setSuccessMessage(null), 3500);
@@ -199,6 +211,7 @@ export const Step2CropSelection: React.FC = () => {
   // 6. Handle Manual Stage Selection
   const handleSelectStage = (stage: BackendCropGrowthStage) => {
     setActiveStageId(stage.id);
+    setSelectedStageId(stage.id);
     setSelectedStage(stage.stage_name);
   };
 
@@ -212,13 +225,17 @@ export const Step2CropSelection: React.FC = () => {
       return;
     }
 
-    // Check acreage capacity
-    if (cultivatedAcreage > availableAcreage + 0.05) {
+    // Check against total plot capacity
+    if (cultivatedAcreage > totalFarmAcreage + 0.05) {
       setErrorMessage(
-        `Cultivated acreage (${cultivatedAcreage} acres) exceeds available plot capacity (${availableAcreage} acres available on ${selectedFarm?.name || 'this plot'}).`
+        `Cultivated acreage (${cultivatedAcreage} acres) exceeds total plot size (${totalFarmAcreage} acres on ${selectedFarm?.name || 'this plot'}).`
       );
       return;
     }
+
+    // Clear stale advisory when crop is saved or switched
+    setLatestBackendAdvisory(null);
+    setSelectedVariety(variety);
 
     // If authenticated and has a registered farm, persist to backend
     if (isRegistered && selectedFarm?.id && session?.access_token && activeCropRecord?.id) {
@@ -233,6 +250,7 @@ export const Step2CropSelection: React.FC = () => {
             sowing_date: sowingDate,
             current_stage_id: activeStageId || undefined,
             status: 'active',
+            replace_active: true,
           },
           session.access_token
         );
@@ -630,7 +648,7 @@ export const Step2CropSelection: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-canvas-200 hover:bg-canvas-300 text-moss-800 font-semibold text-xs transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Farmer Profile</span>
+          <span>Back</span>
         </button>
 
         <button
@@ -642,11 +660,11 @@ export const Step2CropSelection: React.FC = () => {
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Saving Crop to Farm...</span>
+              <span>Saving...</span>
             </>
           ) : (
             <>
-              <span>Save & Continue to Step 3 — Generate Advisory</span>
+              <span>Save & Continue</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </>
           )}

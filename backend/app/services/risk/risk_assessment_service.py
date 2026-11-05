@@ -170,22 +170,27 @@ class RiskAssessmentService:
         db: AsyncSession,
         farmer_id: uuid.UUID,
         farm_id: uuid.UUID,
+        crop_id: Optional[uuid.UUID] = None,
     ) -> Dict[str, Any]:
         """Retrieves the most recent risk assessment or evaluates a fresh one."""
         farm = await FarmService.get_by_farmer_and_id(db, farmer_id, farm_id)
         farm_name_str = farm.name
 
-        result = await db.execute(
+        query = (
             select(RiskAssessment)
             .options(selectinload(RiskAssessment.crop), selectinload(RiskAssessment.growth_stage))
             .where(RiskAssessment.farm_id == farm_id)
-            .order_by(RiskAssessment.assessment_time.desc())
         )
+        if crop_id:
+            query = query.where(RiskAssessment.crop_id == crop_id)
+        query = query.order_by(RiskAssessment.assessment_time.desc())
+
+        result = await db.execute(query)
         latest = result.scalars().first()
 
-        # If no assessment exists yet, run an immediate evaluation
+        # If no assessment exists yet for this crop, run an immediate evaluation
         if not latest:
-            return await cls.evaluate_farm_risk(db, farmer_id, farm_id)
+            return await cls.evaluate_farm_risk(db, farmer_id, farm_id, crop_id=crop_id)
 
         categories = None
         if latest.input_snapshot and isinstance(latest.input_snapshot, dict):

@@ -15,6 +15,7 @@ class FarmCropBase(BaseModel):
     current_stage_id: Optional[uuid.UUID] = Field(None, description="UUID of current growth stage")
     status: str = Field(default="active", json_schema_extra={"example": "active"})
     notes: Optional[str] = None
+    replace_active: bool = Field(default=False, description="Archive existing active crops on plot when switching crops")
 
 
 class FarmCropCreate(FarmCropBase):

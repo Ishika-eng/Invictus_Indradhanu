@@ -26,6 +26,10 @@ import {
   CurrentClimateData,
   fetchFarmCurrentClimate 
 } from '../services/api';
+import { 
+  createDefaultAdvisoryForCrop, 
+  shouldInvalidateAdvisoryOnCropSwitch 
+} from '../utils/cropAdvisory';
 import { useAuth } from './AuthContext';
 
 export type DemoStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -148,8 +152,14 @@ interface AdvisoryContextType {
   // Step 2: Crop & Stage
   selectedCrop: string;
   setSelectedCrop: (crop: string) => void;
+  selectedCropId: string | null;
+  setSelectedCropId: (id: string | null) => void;
   selectedStage: SimplifiedGrowthStage;
   setSelectedStage: (stage: SimplifiedGrowthStage) => void;
+  selectedStageId: string | null;
+  setSelectedStageId: (id: string | null) => void;
+  selectedVariety: string;
+  setSelectedVariety: (variety: string) => void;
   
   // Step 3: AI Processing Sequence
   isAiProcessing: boolean;
@@ -224,8 +234,11 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   );
   
   // Step 2 inputs
-  const [selectedCrop, setSelectedCrop] = useState('Tomato');
+  const [selectedCrop, setSelectedCropState] = useState('Tomato');
+  const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState<SimplifiedGrowthStage>('Flowering');
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [selectedVariety, setSelectedVariety] = useState<string>('Hybrid F1');
   
   // Supporting attributes
   const [selectedGrowthStage, setSelectedGrowthStage] = useState<GrowthStage>('Flowering & Booting');
@@ -249,10 +262,27 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Farmers list
   const [allFarmers, setAllFarmers] = useState<FarmerProfile[]>(SAMPLE_FARMERS);
   const [selectedFarmer, setSelectedFarmer] = useState<FarmerProfile>(SAMPLE_FARMERS[0]);
-  const [activeAdvisory, setActiveAdvisory] = useState<AIAdvisory>(MOCK_DEFAULT_ADVISORY);
+  const [activeAdvisory, setActiveAdvisory] = useState<AIAdvisory>(() =>
+    createDefaultAdvisoryForCrop('Tomato', 'Flowering', farmer?.full_name || 'Ramesh Patil', 'Pune')
+  );
   const [latestBackendAdvisory, setLatestBackendAdvisory] = useState<BackendAdvisory | null>(null);
   const [currentClimate, setCurrentClimate] = useState<CurrentClimateData | null>(null);
   const [metrics, setMetrics] = useState<MetricSummary>(INITIAL_METRICS);
+
+  // Crop switching handler: invalidates stale backend advisory if crop is changed
+  const setSelectedCrop = (crop: string) => {
+    setSelectedCropState(crop);
+    setLatestBackendAdvisory(prev => {
+      if (!prev) return null;
+      if (shouldInvalidateAdvisoryOnCropSwitch(prev.crop_name, crop)) {
+        return null;
+      }
+      return prev;
+    });
+    setActiveAdvisory(prev =>
+      createDefaultAdvisoryForCrop(crop, selectedStage, farmerName, selectedFarm?.name || selectedLocation.city, prev)
+    );
+  };
 
   // Synchronize authenticated farmer profile dynamically across the entire advisory workflow
   useEffect(() => {
@@ -296,41 +326,72 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
         }));
       }
 
-      setActiveAdvisory(prev => ({
-        ...prev,
-        farmerId: farmer.id,
-        farmerName: farmer.full_name,
-        translations: {
-          ...prev.translations,
-          en: {
-            ...prev.translations.en,
-            smsBody: prev.translations.en.smsBody.replace(/Ramesh(\s+ji)?/g, farmer.full_name),
-            voiceScript: prev.translations.en.voiceScript.replace(/Ramesh\s+Patil(\s+ji)?/g, farmer.full_name)
-          },
-          hi: {
-            ...prev.translations.hi,
-            smsBody: prev.translations.hi.smsBody.replace(/रमेश(\s+जी)?/g, `${farmer.full_name} जी`),
-            voiceScript: prev.translations.hi.voiceScript.replace(/रमेश\s+पाटिल(\s+जी)?/g, `${farmer.full_name} जी`)
-          },
-          mr: {
-            ...prev.translations.mr,
-            smsBody: prev.translations.mr.smsBody.replace(/रमेश(\s+जी)?/g, `${farmer.full_name} जी`),
-            voiceScript: prev.translations.mr.voiceScript.replace(/रमेश\s+पाटील(\s+साहेब)?/g, `${farmer.full_name} साहेब`)
-          },
-          te: {
-            ...prev.translations.te,
-            smsBody: prev.translations.te.smsBody.replace(/రమేష్(\s+గారు)?/g, `${farmer.full_name} గారు`),
-            voiceScript: prev.translations.te.voiceScript.replace(/రమేష్\s+పాటిల్(\s+గారు)?/g, `${farmer.full_name} గారు`)
-          },
-          sw: {
-            ...prev.translations.sw,
-            smsBody: prev.translations.sw.smsBody.replace(/Ramesh/g, farmer.full_name),
-            voiceScript: prev.translations.sw.voiceScript
-          }
-        }
-      }));
+      setActiveAdvisory(prev =>
+        createDefaultAdvisoryForCrop(
+          selectedCrop,
+          selectedStage,
+          farmer.full_name,
+          selectedFarm?.name || selectedLocation.city,
+          prev
+        )
+      );
     }
   }, [farmer, selectedFarm]);
+
+  // Synchronize activeAdvisory with latestBackendAdvisory when available
+  useEffect(() => {
+    if (latestBackendAdvisory) {
+      const advCrop = latestBackendAdvisory.crop_name || selectedCrop;
+      const isMatch = advCrop.toLowerCase().includes(selectedCrop.toLowerCase()) || 
+                      selectedCrop.toLowerCase().includes(advCrop.toLowerCase());
+      if (isMatch) {
+        setActiveAdvisory(prev => {
+          const updated = { ...prev };
+          updated.id = latestBackendAdvisory.id;
+          updated.cropName = advCrop;
+          if (latestBackendAdvisory.growth_stage_name) {
+            updated.growthStage = latestBackendAdvisory.growth_stage_name;
+          }
+          if (latestBackendAdvisory.immediate_action) {
+            updated.immediateAction = latestBackendAdvisory.immediate_action;
+          }
+          if (latestBackendAdvisory.why_it_matters) {
+            updated.whyItMatters = latestBackendAdvisory.why_it_matters;
+          }
+          if (latestBackendAdvisory.recommended_timing) {
+            updated.recommendedTiming = latestBackendAdvisory.recommended_timing;
+          }
+          if (latestBackendAdvisory.risk_if_ignored) {
+            updated.riskIfIgnored = latestBackendAdvisory.risk_if_ignored;
+          }
+          if (latestBackendAdvisory.confidence_pct) {
+            updated.confidencePct = Math.round(latestBackendAdvisory.confidence_pct);
+          }
+          if (latestBackendAdvisory.action_steps && latestBackendAdvisory.action_steps.length > 0) {
+            updated.actionSteps = latestBackendAdvisory.action_steps;
+          }
+          if (latestBackendAdvisory.supporting_evidence && latestBackendAdvisory.supporting_evidence.length > 0) {
+            updated.scientificReasoning = latestBackendAdvisory.supporting_evidence;
+          }
+          if (latestBackendAdvisory.translations) {
+            for (const [langKey, t] of Object.entries(latestBackendAdvisory.translations)) {
+              if (updated.translations[langKey as Language]) {
+                updated.translations[langKey as Language] = {
+                  ...updated.translations[langKey as Language],
+                  immediateAction: t.immediate_action || updated.translations[langKey as Language].immediateAction,
+                  whyItMatters: t.why_it_matters || updated.translations[langKey as Language].whyItMatters,
+                  recommendedTiming: t.recommended_timing || updated.translations[langKey as Language].recommendedTiming,
+                  smsBody: t.sms_body || updated.translations[langKey as Language].smsBody,
+                  voiceScript: t.voice_script || updated.translations[langKey as Language].voiceScript,
+                };
+              }
+            }
+          }
+          return updated;
+        });
+      }
+    }
+  }, [latestBackendAdvisory, selectedCrop]);
 
   const togglePresentationMode = () => {
     setIsPresentationMode(prev => !prev);
@@ -357,7 +418,12 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
       // 1. Kick off real backend advisory generation concurrently in the background
       const advisoryPromise = (selectedFarm?.id && session?.access_token)
         ? generateFarmAdvisory(
-            { farm_id: selectedFarm.id, language: selectedLanguage },
+            {
+              farm_id: selectedFarm.id,
+              language: selectedLanguage,
+              crop_id: selectedCropId || undefined,
+              stage_id: selectedStageId || undefined,
+            },
             session.access_token
           ).catch((err) => {
             console.warn('Real advisory generation fallback:', err);
@@ -432,6 +498,7 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
     setIsAiProcessing(false);
     setProcessingStageIndex(0);
     setDeliveryState('idle');
+    setLatestBackendAdvisory(null);
   };
 
   return (
@@ -450,8 +517,14 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
       setSelectedLanguage,
       selectedCrop,
       setSelectedCrop,
+      selectedCropId,
+      setSelectedCropId,
       selectedStage,
       setSelectedStage,
+      selectedStageId,
+      setSelectedStageId,
+      selectedVariety,
+      setSelectedVariety,
       selectedGrowthStage,
       setSelectedGrowthStage,
       selectedSoilType,

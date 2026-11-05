@@ -24,6 +24,7 @@ from app.services.advisory.advisory_types import (
 )
 from app.services.advisory.rules_engine import AdvisoryRulesEngine
 from app.services.advisory.gemini_service import GeminiAdvisoryService
+from app.services.advisory.multilingual_template_engine import MultilingualTemplateEngine
 
 
 class AdvisoryGenerationService:
@@ -184,6 +185,29 @@ class AdvisoryGenerationService:
         needs_review = (advisory_output.confidence_pct < 80.0) or primary_directive.needs_expert_review
 
         # 6. Persist Advisory Entity in PostgreSQL
+        translations_dict: Dict[str, Any] = {}
+        for l_code in ["en", "mr", "hi", "te", "sw"]:
+            if l_code == target_lang:
+                translations_dict[l_code] = {
+                    "immediate_action": advisory_output.immediate_action,
+                    "why_it_matters": advisory_output.why_it_matters,
+                    "recommended_timing": advisory_output.recommended_timing,
+                    "risk_if_ignored": advisory_output.risk_if_ignored,
+                }
+            else:
+                out = MultilingualTemplateEngine.translate_directive(
+                    directive=primary_directive,
+                    target_lang=l_code,
+                    crop_name=crop_name,
+                    stage_name=stage_name,
+                )
+                translations_dict[l_code] = {
+                    "immediate_action": out.immediate_action,
+                    "why_it_matters": out.why_it_matters,
+                    "recommended_timing": out.recommended_timing,
+                    "risk_if_ignored": out.risk_if_ignored,
+                }
+
         advisory = Advisory(
             farmer_id=farmer.id,
             farm_id=farm.id,
@@ -205,14 +229,7 @@ class AdvisoryGenerationService:
             model_version=advisory_output.model_version,
             disclaimer=advisory_output.disclaimer,
             needs_expert_review=needs_review,
-            translations={
-                target_lang: {
-                    "immediate_action": advisory_output.immediate_action,
-                    "why_it_matters": advisory_output.why_it_matters,
-                    "recommended_timing": advisory_output.recommended_timing,
-                    "risk_if_ignored": advisory_output.risk_if_ignored,
-                }
-            },
+            translations=translations_dict,
         )
 
         db.add(advisory)
@@ -257,11 +274,12 @@ class AdvisoryGenerationService:
         farmer_id: uuid.UUID,
         farm_id: uuid.UUID,
         language: Optional[str] = None,
+        crop_id: Optional[uuid.UUID] = None,
     ) -> Advisory:
         """Retrieves most recent advisory or generates a fresh one."""
         await FarmService.get_by_farmer_and_id(db, farmer_id, farm_id)
 
-        result = await db.execute(
+        query = (
             select(Advisory)
             .options(
                 selectinload(Advisory.crop),
@@ -270,8 +288,12 @@ class AdvisoryGenerationService:
                 selectinload(Advisory.delivery_logs),
             )
             .where(Advisory.farm_id == farm_id)
-            .order_by(Advisory.created_at.desc())
         )
+        if crop_id:
+            query = query.where(Advisory.crop_id == crop_id)
+        query = query.order_by(Advisory.created_at.desc())
+
+        result = await db.execute(query)
         latest = result.scalars().first()
 
         if not latest or (language and latest.language != language.lower()):
@@ -280,6 +302,7 @@ class AdvisoryGenerationService:
                 farmer_id=farmer_id,
                 farm_id=farm_id,
                 language=language,
+                crop_id=crop_id,
             )
 
         return latest

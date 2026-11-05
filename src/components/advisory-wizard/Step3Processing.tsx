@@ -115,7 +115,7 @@ export const Step3Processing: React.FC = () => {
                 className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-agri-400 via-agri-300 to-agri-400 hover:from-agri-300 hover:to-agri-200 text-moss-950 font-black text-sm sm:text-base shadow-glow-agri hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Sparkles className="w-5 h-5 text-moss-950 animate-spin" style={{ animationDuration: '6s' }} />
-                <span>{isAiProcessing ? 'Generating Advisory...' : 'Generate Climate Advisory'}</span>
+                <span>{isAiProcessing ? 'Generating Advice...' : 'Generate Advice'}</span>
               </button>
             </div>
           </div>

@@ -238,6 +238,7 @@ export interface FarmCropPayload {
   current_stage_id?: string;
   status?: string;
   notes?: string;
+  replace_active?: boolean;
 }
 
 export interface StageEstimationResponse {
@@ -560,9 +561,11 @@ export interface RiskAssessmentData {
 
 export async function fetchLatestFarmRisk(
   farmId: string,
-  token: string
+  token: string,
+  cropId?: string
 ): Promise<RiskAssessmentData> {
-  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/risk/latest`, {
+  const queryStr = cropId ? `?crop_id=${encodeURIComponent(cropId)}` : '';
+  const res = await fetch(`${API_BASE_URL}/farms/${farmId}/risk/latest${queryStr}`, {
     headers: authHeaders(token),
   });
   if (!res.ok) {
@@ -672,9 +675,11 @@ export async function generateFarmAdvisory(
 export async function fetchLatestFarmAdvisory(
   farmId: string,
   language: string = 'mr',
-  token: string
+  token: string,
+  cropId?: string
 ): Promise<BackendAdvisory> {
-  const res = await fetch(`${API_BASE_URL}/advisories/farms/${farmId}/latest?language=${language}`, {
+  const cropParam = cropId ? `&crop_id=${encodeURIComponent(cropId)}` : '';
+  const res = await fetch(`${API_BASE_URL}/advisories/farms/${farmId}/latest?language=${language}${cropParam}`, {
     headers: authHeaders(token),
   });
   if (!res.ok) {

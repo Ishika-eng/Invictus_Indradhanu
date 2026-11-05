@@ -47,6 +47,8 @@ export const Step6Delivery: React.FC = () => {
     farmerPhone, 
     selectedLocation, 
     selectedCrop, 
+    selectedCropId,
+    selectedStageId,
     selectedLanguage,
     setDemoStep,
     resetDemoFlow,
@@ -173,22 +175,36 @@ export const Step6Delivery: React.FC = () => {
     setIsSending(true);
 
     try {
-      let targetAdvisoryId = latestBackendAdvisory?.id;
+      let targetAdvisoryId = (
+        latestBackendAdvisory &&
+        (latestBackendAdvisory.crop_name?.toLowerCase().includes(selectedCrop.toLowerCase()) ||
+         selectedCrop.toLowerCase().includes(latestBackendAdvisory.crop_name?.toLowerCase() || ''))
+      ) ? latestBackendAdvisory.id : undefined;
 
-      // Ensure we have an advisory record on backend if logged in
+      // Ensure we have an advisory record on backend matching selectedCrop if logged in
       if (!targetAdvisoryId && session?.access_token && selectedFarm?.id) {
         try {
-          // Fast lookup: first check for existing latest farm advisory (avoids multi-minute re-synthesis)
-          const latest = await fetchLatestFarmAdvisory(selectedFarm.id, activeLanguage, session.access_token);
+          // Fast lookup: check for existing latest farm advisory for this crop
+          const latest = await fetchLatestFarmAdvisory(
+            selectedFarm.id,
+            activeLanguage,
+            session.access_token,
+            selectedCropId || undefined
+          );
           if (latest?.id) {
             setLatestBackendAdvisory(latest);
             targetAdvisoryId = latest.id;
           }
         } catch {
-          // Fall back to on-demand generation only if no advisory exists yet
+          // Fall back to on-demand generation only if no advisory exists yet for this crop
           try {
             const generated = await generateFarmAdvisory(
-              { farm_id: selectedFarm.id, language: activeLanguage },
+              {
+                farm_id: selectedFarm.id,
+                language: activeLanguage,
+                crop_id: selectedCropId || undefined,
+                stage_id: selectedStageId || undefined,
+              },
               session.access_token
             );
             setLatestBackendAdvisory(generated);
@@ -469,7 +485,7 @@ export const Step6Delivery: React.FC = () => {
             className="flex items-center gap-1.5 text-xs font-bold text-agri-700 hover:text-agri-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Broadcast All 3 Channels Simultaneously</span>
+            <span>Broadcast All Channels</span>
           </button>
         </div>
 
@@ -561,7 +577,7 @@ export const Step6Delivery: React.FC = () => {
             {isSending ? (
               <>
                 <Radio className="w-5 h-5 animate-spin text-canvas-200" />
-                <span>Contacting Provider Gateway...</span>
+                <span>Sending...</span>
               </>
             ) : !isPhoneValid ? (
               <>
@@ -576,12 +592,12 @@ export const Step6Delivery: React.FC = () => {
             ) : isSimulationMode ? (
               <>
                 <Server className="w-5 h-5" />
-                <span>Simulate Advisory Delivery</span>
+                <span>Simulate Delivery</span>
               </>
             ) : (
               <>
                 <Send className="w-5 h-5" />
-                <span>Send Live Advisory</span>
+                <span>Send Advisory</span>
               </>
             )}
           </button>
@@ -925,7 +941,7 @@ export const Step6Delivery: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-canvas-200 hover:bg-canvas-300 text-moss-800 font-semibold text-xs transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Recommendation</span>
+          <span>Back</span>
         </button>
 
         <button
@@ -934,7 +950,7 @@ export const Step6Delivery: React.FC = () => {
           className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-moss-800 hover:bg-moss-900 text-white font-bold text-xs shadow-soft transition-all active:scale-95"
         >
           <RotateCcw className="w-3.5 h-3.5 text-agri-300" />
-          <span>Run Demo Again</span>
+          <span>Restart</span>
         </button>
       </div>
     </div>

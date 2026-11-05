@@ -27,3 +27,4 @@ export function normalizePhoneNumber(rawPhone: string): string {
   // Any other international number with country code
   return `+${digitsOnly}`;
 }
+

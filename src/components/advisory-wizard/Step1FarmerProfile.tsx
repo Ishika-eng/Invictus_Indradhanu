@@ -446,7 +446,7 @@ export const Step1FarmerProfile: React.FC = () => {
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-agri-700 hover:bg-agri-800 text-white text-xs font-bold shadow-sm"
               >
                 <Navigation className={`w-3.5 h-3.5 ${isDetectingLocation ? 'animate-spin' : ''}`} />
-                <span>{isDetectingLocation ? 'Reading GPS...' : 'Detect Field GPS'}</span>
+                <span>{isDetectingLocation ? 'Detecting...' : 'Detect GPS'}</span>
               </button>
             </div>
 
@@ -458,11 +458,11 @@ export const Step1FarmerProfile: React.FC = () => {
               {isSubmittingReg ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Registering Profile...</span>
+                  <span>Saving Profile...</span>
                 </>
               ) : (
                 <>
-                  <span>Save Profile & Farm Coordinates</span>
+                  <span>Save Profile</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -717,7 +717,7 @@ export const Step1FarmerProfile: React.FC = () => {
           onClick={handleProceed}
           className="flex items-center gap-2 px-6 py-3 rounded-xl bg-agri-700 hover:bg-agri-800 text-white font-bold text-sm shadow-soft hover:shadow-glow-agri transition-all active:scale-95 group"
         >
-          <span>Continue to Step 2 — Crop Selection</span>
+          <span>Continue</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>

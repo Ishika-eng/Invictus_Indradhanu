@@ -362,3 +362,204 @@ async def test_reliability_llm_failure_graceful_fallback():
         assert result.immediate_action != ""
         assert result.why_it_matters != ""
         assert "rule_engine_deterministic_fallback" in result.model_version
+
+
+@pytest.mark.asyncio
+async def test_scenario_a_rice_complete_journey(client: AsyncClient, db_session: AsyncSession):
+    """
+    Scenario A: Complete End-to-End Farmer Journey for Rice (Paddy)
+    Verifies that Rice-specific thresholds, risk evaluation, advisory generation,
+    multilingual translations, and multichannel simulations remain strictly consistent with Rice.
+    """
+    await seed_crop_database(db_session)
+
+    user_id = str(uuid.uuid4())
+    phone = f"+9198{uuid.uuid4().int % 100000000:08d}"
+    token = create_test_token(user_id, phone=phone)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Step 1: Register farmer
+    reg_payload = {
+        "full_name": "Rameshwar Patil",
+        "phone_number": phone,
+        "preferred_language": "mr",
+        "village": "Karjat",
+        "district": "Raigad",
+        "state": "Maharashtra",
+        "country": "India",
+        "farm_name": "Karjat Rice Basin Plot",
+        "latitude": 18.9100,
+        "longitude": 73.3200,
+        "farm_acreage": 3.0,
+        "soil_type": "Clay Loam",
+        "irrigation_source": "Canal / Flood Irrigation",
+    }
+    reg_resp = await client.post("/api/v1/auth/register-farmer", json=reg_payload, headers=headers)
+    assert reg_resp.status_code == 201
+    farm_id = reg_resp.json()["farms"][0]["id"]
+
+    # Step 2: Select Rice (Paddy)
+    crops_res = await client.get("/api/v1/crops/")
+    crops = crops_res.json()
+    rice = next(c for c in crops if "rice" in c["name"].lower() or "paddy" in c["name"].lower())
+    rice_stage = rice["growth_stages"][0]
+
+    add_crop_resp = await client.post(
+        f"/api/v1/farms/{farm_id}/crops",
+        json={
+            "crop_id": rice["id"],
+            "variety": "Karjat-3",
+            "cultivated_acreage": 2.5,
+            "sowing_date": (date.today() - timedelta(days=25)).isoformat(),
+            "current_stage_id": rice_stage["id"],
+            "status": "active",
+        },
+        headers=headers,
+    )
+    assert add_crop_resp.status_code == 201
+
+    # Step 3 & 4: Fetch latest risk filtered by Rice
+    risk_resp = await client.get(
+        f"/api/v1/farms/{farm_id}/risk/latest?crop_id={rice['id']}",
+        headers=headers,
+    )
+    assert risk_resp.status_code == 200
+    risk_data = risk_resp.json()
+    assert "rice" in risk_data["crop_evaluated"].lower() or "paddy" in risk_data["crop_evaluated"].lower()
+    assert "Tomato" not in risk_data["crop_evaluated"]
+
+    # Step 5: Generate Advisory for Rice
+    adv_resp = await client.post(
+        "/api/v1/advisories/generate",
+        json={
+            "farm_id": farm_id,
+            "crop_id": rice["id"],
+            "stage_id": rice_stage["id"],
+            "language": "mr",
+        },
+        headers=headers,
+    )
+    assert adv_resp.status_code == 201
+    adv_data = adv_resp.json()
+    assert "rice" in adv_data["crop_name"].lower() or "paddy" in adv_data["crop_name"].lower()
+    assert "Tomato" not in adv_data["crop_name"]
+
+    # Multilingual translation verification: Rice is used, not Tomato
+    translations = adv_data.get("translations") or {}
+    for lang, t in translations.items():
+        text_blob = f"{t.get('immediate_action', '')} {t.get('why_it_matters', '')}"
+        assert "Tomato" not in text_blob
+        assert "टोमॅटो" not in text_blob
+
+    # Step 6: Simulate Delivery for Rice
+    dispatch_resp = await client.post(
+        "/api/v1/deliveries/dispatch",
+        json={
+            "advisory_id": adv_data["id"],
+            "channels": ["SMS", "VOICE_IVR"],
+            "simulate": True,
+            "custom_phone": phone,
+        },
+        headers=headers,
+    )
+    assert dispatch_resp.status_code in [200, 201]
+    dispatch_data = dispatch_resp.json()
+    assert dispatch_data["mode"] == "SIMULATION"
+    assert len(dispatch_data["channel_outcomes"]) == 2
+    for outcome in dispatch_data["channel_outcomes"]:
+        assert outcome["recipient_phone"] == phone
+        assert "Tomato" not in outcome["content_snippet"]
+
+
+@pytest.mark.asyncio
+async def test_scenario_c_crop_switching_invalidation(client: AsyncClient, db_session: AsyncSession):
+    """
+    Scenario C: Crop Switching and Stale Advisory Invalidation
+    Farmer completes flow with Rice, then returns to Step 2 and switches to Tomato on the same plot.
+    Verifies that:
+    1. Plot acreage replaces the active crop seamlessly using replace_active.
+    2. Old Rice advisory is NOT returned when querying latest advisory for Tomato.
+    3. New advisory and risk evaluation strictly match Tomato.
+    """
+    await seed_crop_database(db_session)
+
+    user_id = str(uuid.uuid4())
+    phone = f"+9198{uuid.uuid4().int % 100000000:08d}"
+    token = create_test_token(user_id, phone=phone)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Register farmer with 2.5 acre farm
+    reg_resp = await client.post(
+        "/api/v1/auth/register-farmer",
+        json={
+            "full_name": "Santosh Kadam",
+            "phone_number": phone,
+            "preferred_language": "en",
+            "village": "Nashik Field",
+            "district": "Nashik",
+            "state": "Maharashtra",
+            "country": "India",
+            "farm_name": "Nashik Plot 1",
+            "latitude": 20.0000,
+            "longitude": 73.7800,
+            "farm_acreage": 2.5,
+            "soil_type": "Black Clay Soil (Vertisol)",
+            "irrigation_source": "Drip Irrigation",
+        },
+        headers=headers,
+    )
+    farm_id = reg_resp.json()["farms"][0]["id"]
+
+    crops_res = await client.get("/api/v1/crops/")
+    crops = crops_res.json()
+    rice = next(c for c in crops if "rice" in c["name"].lower() or "paddy" in c["name"].lower())
+    tomato = next(c for c in crops if c["name"] == "Tomato")
+
+    # 1. First add Rice (2.0 acres out of 2.5)
+    await client.post(
+        f"/api/v1/farms/{farm_id}/crops",
+        json={
+            "crop_id": rice["id"],
+            "cultivated_acreage": 2.0,
+            "sowing_date": (date.today() - timedelta(days=20)).isoformat(),
+            "status": "active",
+        },
+        headers=headers,
+    )
+
+    # Generate Rice advisory
+    rice_adv_resp = await client.post(
+        "/api/v1/advisories/generate",
+        json={"farm_id": farm_id, "crop_id": rice["id"], "language": "en"},
+        headers=headers,
+    )
+    assert rice_adv_resp.status_code == 201
+    rice_adv = rice_adv_resp.json()
+    assert "rice" in rice_adv["crop_name"].lower() or "paddy" in rice_adv["crop_name"].lower()
+
+    # 2. Switch to Tomato with 2.0 acres using replace_active: True
+    switch_resp = await client.post(
+        f"/api/v1/farms/{farm_id}/crops",
+        json={
+            "crop_id": tomato["id"],
+            "cultivated_acreage": 2.0,
+            "sowing_date": (date.today() - timedelta(days=30)).isoformat(),
+            "status": "active",
+            "replace_active": True,
+        },
+        headers=headers,
+    )
+    assert switch_resp.status_code == 201
+
+    # 3. Request latest advisory for Tomato
+    tomato_adv_resp = await client.get(
+        f"/api/v1/advisories/farms/{farm_id}/latest?crop_id={tomato['id']}&language=en",
+        headers=headers,
+    )
+    assert tomato_adv_resp.status_code == 200
+    tomato_adv = tomato_adv_resp.json()
+
+    # Must be Tomato, must NOT reuse old Rice advisory ID
+    assert tomato_adv["crop_name"] == "Tomato"
+    assert tomato_adv["id"] != rice_adv["id"]
+    assert "tomato" in tomato_adv["immediate_action"].lower() or "tomato" in tomato_adv["why_it_matters"].lower() or "crop" in tomato_adv["immediate_action"].lower()

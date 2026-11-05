@@ -67,7 +67,7 @@ export const Step4ClimateIntelligence: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-canvas-200 hover:bg-canvas-300 text-moss-800 font-semibold text-xs transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Crop Selection</span>
+          <span>Back</span>
         </button>
 
         <button
@@ -75,7 +75,7 @@ export const Step4ClimateIntelligence: React.FC = () => {
           onClick={() => setDemoStep(5)}
           className="flex items-center gap-2 px-6 py-3 rounded-xl bg-agri-700 hover:bg-agri-800 text-white font-bold text-sm shadow-soft hover:shadow-glow-agri transition-all active:scale-95 group"
         >
-          <span>Continue to Step 5 — AI Recommendation</span>
+          <span>Continue</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
