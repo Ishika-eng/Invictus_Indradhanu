@@ -24,7 +24,7 @@ class NASAPowerService:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         retries: int = 1,
-        timeout_seconds: float = 12.0,
+        timeout_seconds: float = 6.0,
     ) -> Dict[str, Any]:
         """Fetches historical daily climate time series for coordinates."""
         if not end_date:
@@ -35,6 +35,10 @@ class NASAPowerService:
         # NASA POWER requires YYYYMMDD format
         str_start = start_date.strftime("%Y%m%d")
         str_end = end_date.strftime("%Y%m%d")
+
+        endpoint = cls.BASE_URL
+        if not endpoint.endswith("/daily/point"):
+            endpoint = f"{endpoint.rstrip('/')}/daily/point"
 
         params = {
             "parameters": "T2M,T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M,ALLSKY_SFC_SW_DWN",
@@ -50,7 +54,7 @@ class NASAPowerService:
         for attempt in range(1, retries + 2):
             try:
                 async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-                    resp = await client.get(cls.BASE_URL, params=params)
+                    resp = await client.get(endpoint, params=params)
                     if resp.status_code == 200:
                         return cls._parse_nasa_payload(resp.json(), latitude, longitude, start_date, end_date)
                     elif resp.status_code == 429:

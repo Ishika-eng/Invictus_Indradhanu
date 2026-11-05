@@ -100,7 +100,8 @@ export const StepGenerating: React.FC<StepGeneratingProps> = ({ onBack }) => {
               <button
                 type="button"
                 onClick={onBack}
-                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/15 transition-all"
+                disabled={isGenerating}
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/15 transition-all disabled:opacity-50"
               >
                 Modify Crop Details
               </button>
@@ -108,10 +109,11 @@ export const StepGenerating: React.FC<StepGeneratingProps> = ({ onBack }) => {
               <button
                 type="button"
                 onClick={() => generateAdvisory()}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-agri-400 via-agri-300 to-agri-400 hover:from-agri-300 hover:to-agri-200 text-moss-950 font-extrabold text-sm sm:text-base shadow-glow-agri hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2.5"
+                disabled={isGenerating}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-agri-400 via-agri-300 to-agri-400 hover:from-agri-300 hover:to-agri-200 text-moss-950 font-extrabold text-sm sm:text-base shadow-glow-agri hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Sparkles className="w-5 h-5 text-moss-950 animate-spin" style={{ animationDuration: '6s' }} />
-                <span>Generate Climate Advisory</span>
+                <span>{isGenerating ? 'Synthesizing Advice...' : 'Generate Climate Advisory'}</span>
               </button>
             </div>
           </div>

@@ -45,7 +45,7 @@ class GeminiAdvisoryService:
         stage_name: str,
         farmer_name: str = "Farmer",
         location_str: str = "Farm Plot",
-        timeout_seconds: float = 12.0,
+        timeout_seconds: float = 5.0,
     ) -> FarmerAdvisoryOutput:
         """Invokes Gemini API or falls back to MultilingualTemplateEngine."""
         api_key = settings.GEMINI_API_KEY

@@ -96,7 +96,7 @@ class Settings(BaseSettings):
 
     # External APIs (Pre-configured for future phases)
     OPEN_METEO_BASE_URL: str = "https://api.open-meteo.com/v1"
-    NASA_POWER_BASE_URL: str = "https://power.larc.nasa.gov/api/temporal"
+    NASA_POWER_BASE_URL: str = "https://power.larc.nasa.gov/api/temporal/daily/point"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
 

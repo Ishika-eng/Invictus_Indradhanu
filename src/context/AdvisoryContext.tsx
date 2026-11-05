@@ -20,7 +20,8 @@ import {
   MOCK_DEFAULT_ADVISORY, 
   INITIAL_METRICS 
 } from '../data/mockData';
-import { BackendAdvisory } from '../services/api';
+import { BackendAdvisory, generateFarmAdvisory } from '../services/api';
+import { useAuth } from './AuthContext';
 
 export type DemoStep = 1 | 2 | 3 | 4 | 5 | 6;
 export type DeliveryChannelChoice = 'sms' | 'voice' | 'mobile';
@@ -186,6 +187,7 @@ interface AdvisoryContextType {
 const AdvisoryContext = createContext<AdvisoryContextType | undefined>(undefined);
 
 export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { selectedFarm, session } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('advisory-wizard');
   const [demoStep, setDemoStep] = useState<DemoStep>(1);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
@@ -238,25 +240,57 @@ export const AdvisoryProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const runAiProcessing = async () => {
+    // Prevent duplicate concurrent requests
+    if (isAiProcessing) return;
+
     setIsAiProcessing(true);
     setDemoStep(3);
     setProcessingStageIndex(0);
 
-    await new Promise(r => setTimeout(r, 600));
-    setProcessingStageIndex(1);
-    
-    await new Promise(r => setTimeout(r, 600));
-    setProcessingStageIndex(2);
-    
-    await new Promise(r => setTimeout(r, 600));
-    setProcessingStageIndex(3);
-    
-    await new Promise(r => setTimeout(r, 600));
-    setProcessingStageIndex(4);
-    
-    await new Promise(r => setTimeout(r, 500));
-    setIsAiProcessing(false);
-    setDemoStep(4);
+    const startTime = performance.now();
+
+    try {
+      // 1. Kick off real backend advisory generation concurrently in the background
+      const advisoryPromise = (selectedFarm?.id && session?.access_token)
+        ? generateFarmAdvisory(
+            { farm_id: selectedFarm.id, language: selectedLanguage },
+            session.access_token
+          ).catch((err) => {
+            console.warn('Real advisory generation fallback:', err);
+            return null;
+          })
+        : Promise.resolve(null);
+
+      // Stage 0: Satellite & sensor telemetry
+      setProcessingStageIndex(0);
+      await new Promise(r => setTimeout(r, 220));
+
+      // Stage 1: Micro-zone atmospheric analysis
+      setProcessingStageIndex(1);
+      await new Promise(r => setTimeout(r, 220));
+
+      // Stage 2: Biophysical crop risk evaluation
+      setProcessingStageIndex(2);
+      await new Promise(r => setTimeout(r, 220));
+
+      // Stage 3: Multi-lingual AI synthesis
+      setProcessingStageIndex(3);
+
+      // Await backend advisory generation without blocking the UI
+      const generated = await advisoryPromise;
+      if (generated) {
+        setLatestBackendAdvisory(generated);
+      }
+
+      setProcessingStageIndex(4);
+      await new Promise(r => setTimeout(r, 140));
+
+      const elapsed = performance.now() - startTime;
+      console.log(`[Indradhanu Pipeline] Step 3 Advisory Generation completed in ${elapsed.toFixed(1)}ms`);
+    } finally {
+      setIsAiProcessing(false);
+      setDemoStep(4);
+    }
   };
 
   const sendAdvisoryDelivery = async () => {

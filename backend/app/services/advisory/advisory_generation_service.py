@@ -99,22 +99,30 @@ class AdvisoryGenerationService:
 
         stage_name = target_stage.stage_name if target_stage else "Vegetative Growth"
 
-        # 3. Retrieve Live Environmental Telemetry & Risk Assessment
-        current_data = await ClimateAggregationService.get_current_weather(db, farm_id)
-        forecast_data = await ClimateAggregationService.get_forecast(db, farm_id)
+        # 3. Retrieve Live Environmental Telemetry & Risk Assessment (unified concurrent fetch)
+        current_data, forecast_data, farm = await ClimateAggregationService.get_current_and_forecast(
+            db=db,
+            farm_id=farm_id,
+            farm=farm,
+        )
 
         current_weather = current_data.get("current", {})
         daily_forecast = forecast_data.get("daily_forecast", [])
         sensor_info = current_data.get("soil_sensor", {})
         has_sensor = bool(sensor_info.get("installed", False))
 
-        # Run or retrieve latest risk assessment
+        # Run or retrieve latest risk assessment (reusing pre-resolved farm, crop, stage, and climate data)
         risk_result = await RiskAssessmentService.evaluate_farm_risk(
             db=db,
             farmer_id=farmer_id,
             farm_id=farm_id,
             crop_id=target_crop.id if target_crop else None,
             stage_id=target_stage.id if target_stage else None,
+            current_data=current_data,
+            forecast_data=forecast_data,
+            farm=farm,
+            target_crop=target_crop,
+            target_stage=target_stage,
         )
 
         risk_assessment_id = None

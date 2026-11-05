@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,32 +37,26 @@ class ClimateAggregationService:
         return farm
 
     @classmethod
-    async def get_current_weather(
+    async def _fetch_and_cache_weather(
         cls,
         db: AsyncSession,
-        farm_id: uuid.UUID,
+        farm: Farm,
         bypass_cache: bool = False,
-    ) -> Dict[str, Any]:
-        """Returns current micro-climate for a farm with IoT sensor status and Open-Meteo readings."""
-        farm = await cls.get_farm(db, farm_id)
-        farm_id_val = farm.id
-        farm_id_str = str(farm.id)
-        farm_name_str = farm.name
-        farm_lat = farm.latitude
-        farm_lng = farm.longitude
-        cache_key = f"current:{round(farm.latitude, 3)}:{round(farm.longitude, 3)}"
+    ) -> Tuple[Dict[str, Any], bool]:
+        """Retrieves weather data from cache or Open-Meteo, persisting observations on fresh fetch only."""
+        cache_key = f"weather:{round(farm.latitude, 3)}:{round(farm.longitude, 3)}"
+        cached_data = None if bypass_cache else climate_cache.get(cache_key)
+        if cached_data:
+            return cached_data, True
 
-        weather_data = None if bypass_cache else climate_cache.get(cache_key)
-        if not weather_data:
-            weather_data = await OpenMeteoService.fetch_weather(farm_lat, farm_lng)
-            climate_cache.set(cache_key, weather_data, ttl_seconds=1800)  # 30 min TTL
+        weather_data = await OpenMeteoService.fetch_weather(farm.latitude, farm.longitude)
+        climate_cache.set(cache_key, weather_data, ttl_seconds=1800)  # 30 min TTL
 
-        current = weather_data["current"]
-
-        # Persist current observation to database
+        # Persist fresh observations to database in a single transaction
         try:
-            obs = ClimateObservation(
-                farm_id=farm_id_val,
+            current = weather_data["current"]
+            obs_curr = ClimateObservation(
+                farm_id=farm.id,
                 source="OPEN_METEO",
                 observation_type="current",
                 observation_time=datetime.now(timezone.utc),
@@ -79,25 +73,56 @@ class ClimateAggregationService:
                 weather_code=current.get("weather_code"),
                 weather_condition=current.get("weather_condition"),
                 is_in_situ_sensor=False,
-                soil_moisture_0_10cm_pct=None,  # Explicitly None: No physical IoT sensor
+                soil_moisture_0_10cm_pct=None,
                 soil_moisture_10_40cm_pct=None,
                 raw_payload={"current": current},
             )
-            db.add(obs)
+            db.add(obs_curr)
+
+            daily_list = weather_data.get("daily_forecast", [])
+            for day in daily_list:
+                f_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
+                obs_fore = ClimateObservation(
+                    farm_id=farm.id,
+                    source="OPEN_METEO",
+                    observation_type="forecast",
+                    observation_time=datetime.now(timezone.utc),
+                    retrieval_timestamp=datetime.now(timezone.utc),
+                    forecast_date=f_date,
+                    forecast_day=day.get("day_number"),
+                    temperature_c=(day["temp_max_c"] + day["temp_min_c"]) / 2.0,
+                    temp_min_c=day.get("temp_min_c"),
+                    temp_max_c=day.get("temp_max_c"),
+                    relative_humidity_pct=current["relative_humidity_pct"],
+                    precipitation_probability_pct=day.get("precipitation_probability_pct", 0.0),
+                    rain_expected_mm=day.get("precipitation_mm", 0.0),
+                    wind_speed_kmh=day.get("wind_speed_max_kmh", 0.0),
+                    weather_code=day.get("weather_code"),
+                    weather_condition=day.get("weather_condition"),
+                    is_in_situ_sensor=False,
+                    raw_payload={"daily": day},
+                )
+                db.add(obs_fore)
+
             await db.commit()
         except Exception as e:
-            logger.warning(f"Could not persist current climate observation: {e}")
+            logger.warning(f"Could not persist climate observations: {e}")
             await db.rollback()
 
+        return weather_data, False
+
+    @classmethod
+    def _format_current_response(cls, farm: Farm, weather_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Formats the current micro-climate response dictionary."""
         return {
-            "farm_id": farm_id_str,
-            "farm_name": farm_name_str,
-            "latitude": farm_lat,
-            "longitude": farm_lng,
+            "farm_id": str(farm.id),
+            "farm_name": farm.name,
+            "latitude": farm.latitude,
+            "longitude": farm.longitude,
             "data_source": "Open-Meteo v1 (WMO-standard NWP)",
             "observation_type": "current_weather",
             "last_updated": weather_data.get("retrieval_timestamp"),
-            "current": current,
+            "current": weather_data["current"],
             "soil_sensor": {
                 "installed": False,
                 "sensor_id": None,
@@ -111,6 +136,33 @@ class ClimateAggregationService:
         }
 
     @classmethod
+    def _format_forecast_response(cls, farm: Farm, weather_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Formats the 7-day forecast response dictionary."""
+        return {
+            "farm_id": str(farm.id),
+            "farm_name": farm.name,
+            "latitude": farm.latitude,
+            "longitude": farm.longitude,
+            "data_source": "Open-Meteo v1 (High-Resolution NWP)",
+            "observation_type": "7_day_forecast",
+            "last_updated": weather_data.get("retrieval_timestamp"),
+            "daily_forecast": weather_data.get("daily_forecast", []),
+            "hourly_24h": weather_data.get("hourly_24h", []),
+        }
+
+    @classmethod
+    async def get_current_weather(
+        cls,
+        db: AsyncSession,
+        farm_id: uuid.UUID,
+        bypass_cache: bool = False,
+    ) -> Dict[str, Any]:
+        """Returns current micro-climate for a farm with IoT sensor status and Open-Meteo readings."""
+        farm = await cls.get_farm(db, farm_id)
+        weather_data, _ = await cls._fetch_and_cache_weather(db, farm, bypass_cache=bypass_cache)
+        return cls._format_current_response(farm, weather_data)
+
+    @classmethod
     async def get_forecast(
         cls,
         db: AsyncSession,
@@ -119,61 +171,24 @@ class ClimateAggregationService:
     ) -> Dict[str, Any]:
         """Returns 7-day daily forecast and 24-hour hourly trend for a farm plot."""
         farm = await cls.get_farm(db, farm_id)
-        farm_id_val = farm.id
-        farm_id_str = str(farm.id)
-        farm_name_str = farm.name
-        farm_lat = farm.latitude
-        farm_lng = farm.longitude
-        cache_key = f"forecast:{round(farm.latitude, 3)}:{round(farm.longitude, 3)}"
+        weather_data, _ = await cls._fetch_and_cache_weather(db, farm, bypass_cache=bypass_cache)
+        return cls._format_forecast_response(farm, weather_data)
 
-        weather_data = None if bypass_cache else climate_cache.get(cache_key)
-        if not weather_data:
-            weather_data = await OpenMeteoService.fetch_weather(farm_lat, farm_lng)
-            climate_cache.set(cache_key, weather_data, ttl_seconds=1800)
-
-        daily_list = weather_data.get("daily_forecast", [])
-
-        # Persist daily forecasts to database
-        try:
-            for day in daily_list:
-                f_date = datetime.strptime(day["date"], "%Y-%m-%d").date()
-                obs = ClimateObservation(
-                    farm_id=farm_id_val,
-                    source="OPEN_METEO",
-                    observation_type="forecast",
-                    observation_time=datetime.now(timezone.utc),
-                    retrieval_timestamp=datetime.now(timezone.utc),
-                    forecast_date=f_date,
-                    forecast_day=day.get("day_number"),
-                    temperature_c=(day["temp_max_c"] + day["temp_min_c"]) / 2.0,
-                    temp_min_c=day.get("temp_min_c"),
-                    temp_max_c=day.get("temp_max_c"),
-                    relative_humidity_pct=weather_data["current"]["relative_humidity_pct"],
-                    precipitation_probability_pct=day.get("precipitation_probability_pct", 0.0),
-                    rain_expected_mm=day.get("precipitation_mm", 0.0),
-                    wind_speed_kmh=day.get("wind_speed_max_kmh", 0.0),
-                    weather_code=day.get("weather_code"),
-                    weather_condition=day.get("weather_condition"),
-                    is_in_situ_sensor=False,
-                    raw_payload={"daily": day},
-                )
-                db.add(obs)
-            await db.commit()
-        except Exception as e:
-            logger.warning(f"Could not persist forecast observations: {e}")
-            await db.rollback()
-
-        return {
-            "farm_id": farm_id_str,
-            "farm_name": farm_name_str,
-            "latitude": farm_lat,
-            "longitude": farm_lng,
-            "data_source": "Open-Meteo v1 (High-Resolution NWP)",
-            "observation_type": "7_day_forecast",
-            "last_updated": weather_data.get("retrieval_timestamp"),
-            "daily_forecast": daily_list,
-            "hourly_24h": weather_data.get("hourly_24h", []),
-        }
+    @classmethod
+    async def get_current_and_forecast(
+        cls,
+        db: AsyncSession,
+        farm_id: uuid.UUID,
+        bypass_cache: bool = False,
+        farm: Optional[Farm] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, Any], Farm]:
+        """Fetches current and 7-day forecast concurrently with unified cache and single farm lookup."""
+        if farm is None:
+            farm = await cls.get_farm(db, farm_id)
+        weather_data, _ = await cls._fetch_and_cache_weather(db, farm, bypass_cache=bypass_cache)
+        current_data = cls._format_current_response(farm, weather_data)
+        forecast_data = cls._format_forecast_response(farm, weather_data)
+        return current_data, forecast_data, farm
 
     @classmethod
     async def get_historical_climate(

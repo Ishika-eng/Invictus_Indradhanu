@@ -27,64 +27,71 @@ class RiskAssessmentService:
         farm_id: uuid.UUID,
         crop_id: Optional[uuid.UUID] = None,
         stage_id: Optional[uuid.UUID] = None,
+        current_data: Optional[Dict[str, Any]] = None,
+        forecast_data: Optional[Dict[str, Any]] = None,
+        farm: Optional[Farm] = None,
+        target_crop: Optional[Crop] = None,
+        target_stage: Optional[CropGrowthStage] = None,
     ) -> Dict[str, Any]:
         """Runs the CropRiskEngine on live climate inputs and stores the assessment in PostgreSQL."""
-        # 1. Enforce farm ownership and retrieve farm with relationships
-        farm = await FarmService.get_by_farmer_and_id(db, farmer_id, farm_id)
+        # 1. Enforce farm ownership and retrieve farm with relationships (if not pre-resolved)
+        if farm is None:
+            farm = await FarmService.get_by_farmer_and_id(db, farmer_id, farm_id)
 
-        # 2. Resolve target crop and stage
-        target_crop: Optional[Crop] = None
-        target_stage: Optional[CropGrowthStage] = None
+        # 2. Resolve target crop and stage (if not pre-resolved)
+        if target_crop is None:
+            if crop_id:
+                crop_res = await db.execute(
+                    select(Crop).options(selectinload(Crop.growth_stages)).where(Crop.id == crop_id)
+                )
+                target_crop = crop_res.scalar_one_or_none()
 
-        if crop_id:
-            crop_res = await db.execute(
-                select(Crop).options(selectinload(Crop.growth_stages)).where(Crop.id == crop_id)
-            )
-            target_crop = crop_res.scalar_one_or_none()
+            if not target_crop and farm.active_crop_id:
+                crop_res = await db.execute(
+                    select(Crop).options(selectinload(Crop.growth_stages)).where(Crop.id == farm.active_crop_id)
+                )
+                target_crop = crop_res.scalar_one_or_none()
 
-        if not target_crop and farm.active_crop_id:
-            crop_res = await db.execute(
-                select(Crop).options(selectinload(Crop.growth_stages)).where(Crop.id == farm.active_crop_id)
-            )
-            target_crop = crop_res.scalar_one_or_none()
+            if not target_crop:
+                # Check farm_crops
+                farm_crop_res = await db.execute(
+                    select(FarmCrop).options(selectinload(FarmCrop.crop).selectinload(Crop.growth_stages)).where(FarmCrop.farm_id == farm_id, FarmCrop.status == "active")
+                )
+                active_fc = farm_crop_res.scalars().first()
+                if active_fc:
+                    target_crop = active_fc.crop
 
-        if not target_crop:
-            # Check farm_crops
-            farm_crop_res = await db.execute(
-                select(FarmCrop).options(selectinload(FarmCrop.crop).selectinload(Crop.growth_stages)).where(FarmCrop.farm_id == farm_id, FarmCrop.status == "active")
-            )
-            active_fc = farm_crop_res.scalars().first()
-            if active_fc:
-                target_crop = active_fc.crop
-
-        if not target_crop:
-            # Fallback to default crop (e.g. Tomato) from catalog
-            first_crop_res = await db.execute(
-                select(Crop).options(selectinload(Crop.growth_stages)).order_by(Crop.name)
-            )
-            target_crop = first_crop_res.scalars().first()
+            if not target_crop:
+                # Fallback to default crop (e.g. Tomato) from catalog
+                first_crop_res = await db.execute(
+                    select(Crop).options(selectinload(Crop.growth_stages)).order_by(Crop.name)
+                )
+                target_crop = first_crop_res.scalars().first()
 
         crop_name = target_crop.name if target_crop else "Tomato"
 
         # Resolve Stage
-        if stage_id and target_crop:
-            target_stage = next((s for s in target_crop.growth_stages if s.id == stage_id), None)
+        if target_stage is None:
+            if stage_id and target_crop:
+                target_stage = next((s for s in target_crop.growth_stages if s.id == stage_id), None)
 
-        if not target_stage and farm.active_stage_id and target_crop:
-            target_stage = next((s for s in target_crop.growth_stages if s.id == farm.active_stage_id), None)
+            if not target_stage and farm.active_stage_id and target_crop:
+                target_stage = next((s for s in target_crop.growth_stages if s.id == farm.active_stage_id), None)
 
-        if not target_stage and target_crop and target_crop.growth_stages:
-            # Default to vegetative or mid-phase
-            target_stage = (
-                next((s for s in target_crop.growth_stages if s.stage_order == 3), None)
-                or target_crop.growth_stages[0]
-            )
+            if not target_stage and target_crop and target_crop.growth_stages:
+                # Default to vegetative or mid-phase
+                target_stage = (
+                    next((s for s in target_crop.growth_stages if s.stage_order == 3), None)
+                    or target_crop.growth_stages[0]
+                )
 
         stage_name = target_stage.stage_name if target_stage else "Vegetative Growth"
 
-        # 3. Retrieve Live Environmental Data
-        current_data = await ClimateAggregationService.get_current_weather(db, farm_id)
-        forecast_data = await ClimateAggregationService.get_forecast(db, farm_id)
+        # 3. Retrieve Live Environmental Data (concurrently or reuse pre-fetched)
+        if current_data is None or forecast_data is None:
+            c_data, f_data, _ = await ClimateAggregationService.get_current_and_forecast(db, farm_id, farm=farm)
+            current_data = current_data or c_data
+            forecast_data = forecast_data or f_data
 
         current_weather = current_data.get("current", {})
         daily_forecast = forecast_data.get("daily_forecast", [])
